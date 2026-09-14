@@ -1,8 +1,8 @@
-# Hospital ONE Phase 1 MVP Claude Code Build Specification
+# Hospital ONE Infirmary Core MVP Claude Code Build Specification
 
 ## 1 Purpose
 
-Build a runnable, pilot-oriented Phase 1 MVP of Hospital ONE for a Philippine Government Level 1 hospital. The product must establish a secure and extensible operational foundation covering hospital administration, patient identity, appointments and queues, outpatient care, a basic longitudinal clinical record, charge capture, billing and cashiering, audit history, notifications, and essential operational reports.
+Build a runnable Infirmary Core MVP of Hospital ONE for a Philippine infirmary. The product must deliver a secure, working end-to-end operational chain covering patient identity, consultation or admission, clinical orders and results, medicine or supply dispensing, automatic charge capture, payment, reporting, administration, roles, and audit history. The same configurable core must support later expansion to Level 1 and Level 2 hospitals without a code fork.
 
 This release is the first implementation slice of a broader Hospital Management Information System. It must use real persistence, permissions, workflows, validation, audit records, and automated tests. Do not implement the application as disconnected mock screens. Modules planned for later phases must be represented by clean domain boundaries and integration contracts, but must not be partially implemented in Phase 1.
 
@@ -11,7 +11,7 @@ The source product definition is `Hospital_ONE_MVP_Product_Definition_Pack_v0.1.
 ## 2 Confirmed Product Decisions
 
 - Release strategy: phased core MVP.
-- Initial hospital profile: Philippine Government Level 1 hospital.
+- Initial facility profile: Philippine infirmary; do not assume Level 1 or Level 2 capability.
 - Frontend and application framework: Next.js with TypeScript.
 - Database, authentication, authorization policy enforcement, and file storage: Supabase.
 - Database engine: PostgreSQL managed through Supabase.
@@ -40,16 +40,17 @@ Follow this specification as the implementation contract.
 
 ## 4 Phase 1 Outcome
 
-At the end of Phase 1, authorized hospital staff must be able to complete this primary journey:
+At the end of the MVP, authorized infirmary staff must be able to complete these connected journeys:
 
 1. Configure the pilot facility, departments, locations, users, roles, services, prices, payers, discount rules, and clinical templates.
 2. Search for an existing patient or register a new patient with duplicate warnings.
 3. Schedule or create a walk-in OPD visit and place the patient in a configurable queue.
-4. Record arrival, triage information, allergies, vital signs, consultation notes, diagnoses, service orders, prescriptions, and disposition.
-5. Automatically create billable ledger entries from performed services or authorized manual charges.
-6. Review the patient ledger, allocate payers, apply approved government or statutory discounts, receive partial or full payment, issue an official receipt reference, and close the encounter when configured requirements are satisfied.
-7. Retrieve the patient's longitudinal encounter history subject to authorization.
-8. View operational queues, daily activity, revenue, cashier accountability, incomplete documentation, and audit reports.
+4. Record a consultation or admit the patient to a configured ward and bed, including transfer and discharge.
+5. Create clinical orders, route them to a worklist, record and validate results, and return results to the encounter.
+6. Validate and dispense prescribed medicines or issued supplies by store, lot, and expiry.
+7. Automatically create billable ledger entries from consultations, admission services, completed orders, medicines, and supplies.
+8. Review the patient ledger, receive partial or full payment, issue a receipt reference, and close the encounter after clinical and financial clearance.
+9. Retrieve the longitudinal clinical record and produce essential census, clinical, pharmacy, inventory, billing, cashier, and management reports.
 
 ## 5 Scope Boundaries
 
@@ -78,15 +79,14 @@ At the end of Phase 1, authorized hospital staff must be able to complete this p
 
 ### 5.2 Explicitly Deferred
 
-- Emergency department clinical workflow beyond a future-ready encounter type.
-- Inpatient admission, discharge, transfer, bed management, room charging, and nursing workspaces.
-- Electronic medication administration record.
-- Laboratory accession, specimen, worklist, result validation, analyzer integration, and turnaround-time operations.
-- Radiology scheduling, procedure workflow, report finalization, PACS, and DICOM integration.
-- Pharmacy verification, dispensing, returns, controlled-drug registers, and stock deduction.
+- Advanced emergency-department acuity tracking beyond the common consultation/admission core.
+- Advanced nursing care plans and electronic medication administration record.
+- Laboratory analyzer integration and advanced laboratory specialty workflows.
+- PACS image archive, DICOM integration, and advanced radiology scheduling.
+- Controlled-drug regulatory workflows beyond controlled permissions and audit placeholders.
 - Full PhilHealth eClaims submission, CF5, eSOA XML generation, DRG, Return-to-Hospital handling, and payment reconciliation.
 - Full medical social service assessment, guarantee letters, utilization, and agency receivables.
-- Inventory receiving, issue, transfer, lot, expiry, stock count, adjustment, and reorder processing.
+- Full procurement, purchase orders, supplier canvassing, and asset lifecycle.
 - Medical records deficiency, coding, release-of-information, retention, and registry workflows beyond basic encounter history and controlled document access.
 - Operating room, ICU, blood bank, patient portal, predictive analytics, and AI diagnosis.
 - Full accounting, accounts payable, payroll, recruitment, attendance, procurement, and asset lifecycle.
@@ -227,9 +227,9 @@ Payment methods must be configurable and initially include cash, bank transfer, 
 
 Posted payments and closed shifts must not be overwritten. Corrections require a linked reversal, void, or refund transaction with reason and authorization.
 
-### 7.7 Government Level 1 Profile
+### 7.7 Infirmary Profile
 
-Include configurable patient financial classifications and flags for service patient, sponsored patient, indigent assessment referral, PhilHealth membership status, No Balance Billing evaluation state, and government assistance referral.
+Activate only services and departments actually available in the pilot infirmary. Keep facility capabilities configurable so laboratory, radiology, ward, pharmacy, and supply functions can be enabled independently. Include configurable patient financial classifications and basic PhilHealth or assistance reference fields without claiming claims certification.
 
 Phase 1 does not determine legal benefit eligibility autonomously. Present these as workflow data and verification states. Any discount or NBB computation must be configurable, reviewable, effective-dated, and disabled by default until approved by the pilot hospital.
 
@@ -675,4 +675,3 @@ Track these as unresolved decisions in `docs/DECISIONS.md` and do not invent pro
 - production Supabase and Vercel plan, region, backup retention, point-in-time recovery, monitoring, and disaster-recovery design;
 - whether the pilot requires on-premise or hybrid continuity during internet interruption;
 - authoritative regulatory and PhilHealth interface specifications at design freeze and go-live review.
-
