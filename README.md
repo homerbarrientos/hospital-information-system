@@ -1,6 +1,6 @@
 # Hospital ONE
 
-Phase 1 foundation for a Government Level 1 hospital management system. The current build provides a responsive, runnable demonstration workspace plus the initial Supabase schema and RLS foundation.
+Infirmary Core MVP foundation covering patient registration, consultation, admission and transfer, orders and results, pharmacy and inventory, billing and cashiering, administration, audit, and essential management reporting.
 
 ## Run locally
 
