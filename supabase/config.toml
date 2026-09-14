@@ -1,0 +1,15 @@
+project_id = "hospital-one"
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+[db]
+port = 54322
+major_version = 17
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+[storage]
+enabled = true
+file_size_limit = "20MiB"
