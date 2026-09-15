@@ -3,6 +3,7 @@ import "./globals.css";
 import "./workflows.css";
 import "./clinical.css";
 import "./adt.css";
+import "./performance.css";
 
 export const metadata: Metadata = {
   title: "Hospital ONE",
