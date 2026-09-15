@@ -1,0 +1,33 @@
+begin;
+insert into public.privileges(code,description,risk_level) values ('clinical.read','View clinical encounters','privileged'),('clinical.write','Create consultation documentation','high_risk') on conflict(code) do update set description=excluded.description,risk_level=excluded.risk_level;
+insert into public.role_privileges(role_id,privilege_code) select r.id,p.code from public.roles r join public.organizations o on o.id=r.organization_id cross join public.privileges p where o.code='INF' and r.name='Hospital Administrator' and p.code in('clinical.read','clinical.write') on conflict do nothing;
+create sequence if not exists public.encounter_no_seq;
+alter table public.allergies enable row level security;alter table public.vital_observations enable row level security;alter table public.clinical_notes enable row level security;alter table public.clinical_note_versions enable row level security;alter table public.diagnoses enable row level security;
+create policy "clinical allergy read" on public.allergies for select using(exists(select 1 from public.patients p join public.facilities f on f.organization_id=p.organization_id where p.id=allergies.patient_id and public.has_privilege('clinical.read',f.id)));
+create policy "clinical vital read" on public.vital_observations for select using(exists(select 1 from public.encounters e where e.id=vital_observations.encounter_id and public.has_privilege('clinical.read',e.facility_id)));
+create policy "clinical note read" on public.clinical_notes for select using(exists(select 1 from public.encounters e where e.id=clinical_notes.encounter_id and public.has_privilege('clinical.read',e.facility_id)));
+create policy "clinical note version read" on public.clinical_note_versions for select using(exists(select 1 from public.clinical_notes n join public.encounters e on e.id=n.encounter_id where n.id=clinical_note_versions.note_id and public.has_privilege('clinical.read',e.facility_id)));
+create policy "clinical diagnosis read" on public.diagnoses for select using(exists(select 1 from public.encounters e where e.id=diagnoses.encounter_id and public.has_privilege('clinical.read',e.facility_id)));
+create or replace function public.create_consultation(target_facility uuid,target_patient uuid,chief_complaint text,soap_note text,diagnosis text,allergy_substance text,allergy_reaction text,systolic numeric,diastolic numeric,temperature numeric,spo2 numeric) returns uuid language plpgsql security definer set search_path='' as $$
+declare target_department uuid;encounter_id uuid;note_id uuid;target_org uuid;enc_no text;
+begin
+ if auth.uid() is null or not public.has_privilege('clinical.write',target_facility) then raise exception 'Not authorized to document consultations';end if;
+ select f.organization_id into target_org from public.facilities f join public.patients p on p.organization_id=f.organization_id where f.id=target_facility and p.id=target_patient;
+ if target_org is null then raise exception 'Patient is not registered at this facility';end if;
+ select id into target_department from public.departments where facility_id=target_facility order by(code='OPD') desc,code limit 1;
+ if target_department is null then insert into public.departments(facility_id,code,name) values(target_facility,'OPD','Outpatient Department') returning id into target_department;end if;
+ enc_no:='OPD-'||to_char(current_date,'YYYY')||'-'||lpad(nextval('public.encounter_no_seq')::text,6,'0');
+ insert into public.encounters(facility_id,department_id,patient_id,encounter_no,encounter_type,status,created_by) values(target_facility,target_department,target_patient,enc_no,'OPD','in_consultation',auth.uid()) returning id into encounter_id;
+ if nullif(trim(allergy_substance),'') is not null then insert into public.allergies(patient_id,substance,reaction,recorded_by) values(target_patient,trim(allergy_substance),nullif(trim(allergy_reaction),''),auth.uid());end if;
+ if systolic is not null then insert into public.vital_observations(encounter_id,code,value,unit,observed_by) values(encounter_id,'BP-SYS',systolic,'mmHg',auth.uid());end if;
+ if diastolic is not null then insert into public.vital_observations(encounter_id,code,value,unit,observed_by) values(encounter_id,'BP-DIA',diastolic,'mmHg',auth.uid());end if;
+ if temperature is not null then insert into public.vital_observations(encounter_id,code,value,unit,observed_by) values(encounter_id,'TEMP',temperature,'Cel',auth.uid());end if;
+ if spo2 is not null then insert into public.vital_observations(encounter_id,code,value,unit,observed_by) values(encounter_id,'SPO2',spo2,'%',auth.uid());end if;
+ insert into public.clinical_notes(encounter_id,note_type,status,created_by) values(encounter_id,'consultation','draft',auth.uid()) returning id into note_id;
+ insert into public.clinical_note_versions(note_id,version,content,author_id) values(note_id,1,jsonb_build_object('chief_complaint',trim(chief_complaint),'soap_note',trim(soap_note)),auth.uid());
+ if nullif(trim(diagnosis),'') is not null then insert into public.diagnoses(encounter_id,description,recorded_by) values(encounter_id,trim(diagnosis),auth.uid());end if;
+ insert into public.audit_events(organization_id,facility_id,actor_id,event_type,object_type,object_id,details) values(target_org,target_facility,auth.uid(),'consultation.created','encounter',encounter_id,jsonb_build_object('encounter_no',enc_no));
+ return encounter_id;
+end$$;
+grant execute on function public.create_consultation(uuid,uuid,text,text,text,text,text,numeric,numeric,numeric,numeric) to authenticated;
+commit;
