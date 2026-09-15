@@ -1,0 +1,1 @@
+export function ModuleSkeleton(){return <div className="module-skeleton" role="status" aria-label="Loading module records"><div className="skeleton-line heading"/><div className="skeleton-line subtitle"/><div className="skeleton-card"><div className="skeleton-line row"/><div className="skeleton-line row"/><div className="skeleton-line row"/></div></div>}
