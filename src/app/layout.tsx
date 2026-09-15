@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./workflows.css";
 import "./clinical.css";
+import "./adt.css";
 
 export const metadata: Metadata = {
   title: "Hospital ONE",
