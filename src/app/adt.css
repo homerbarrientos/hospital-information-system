@@ -1,0 +1,1 @@
+.adt-actions{display:grid;gap:6px}.adt-actions form{display:flex;gap:5px;align-items:center}.adt-actions input,.adt-actions select{height:34px;min-width:105px;border:1px solid var(--line);border-radius:7px;padding:0 7px;background:white}.adt-actions .btn{min-height:34px;padding:0 9px}@media(max-width:900px){.adt-actions form{min-width:430px}}
