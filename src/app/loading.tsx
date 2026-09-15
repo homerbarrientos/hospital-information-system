@@ -1,0 +1,1 @@
+import{HeartPulse}from"lucide-react";export default function Loading(){return <div className="route-loading" role="status" aria-live="polite"><span className="loading-mark"><HeartPulse size={22}/></span><div><strong>Opening module</strong><span>Loading secure facility data…</span></div></div>}
