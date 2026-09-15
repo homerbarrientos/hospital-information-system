@@ -1,0 +1,5 @@
+"use server";
+import{redirect}from"next/navigation";import{createClient}from"@/lib/supabase/server";
+export async function signIn(formData:FormData){const supabase=await createClient();const email=String(formData.get("email")||"");const password=String(formData.get("password")||"");const{error}=await supabase.auth.signInWithPassword({email,password});if(error)redirect(`/login?error=${encodeURIComponent(error.message)}`);redirect("/patients")}
+export async function signUp(formData:FormData){const supabase=await createClient();const email=String(formData.get("email")||"");const password=String(formData.get("password")||"");const full_name=String(formData.get("full_name")||"");const{data,error}=await supabase.auth.signUp({email,password,options:{data:{full_name}}});if(error)redirect(`/login?error=${encodeURIComponent(error.message)}`);if(data.session)redirect("/patients");redirect("/login?message=Check your email to confirm the account, then sign in.")}
+export async function signOut(){const supabase=await createClient();await supabase.auth.signOut();redirect("/login")}
