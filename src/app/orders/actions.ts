@@ -93,7 +93,12 @@ export async function cancelOrder(_: OrderState, form: FormData): Promise<OrderS
     target_order: text(form, "order_id"),
     cancel_reason: reason,
   });
-  if (error) return initialError(error.message);
+  if (error) {
+    if (error.code === "PGRST202" || error.message.includes("schema cache")) {
+      return initialError("Order cancellation is not installed in Supabase yet. Run database migration 015, then try again.");
+    }
+    return initialError(error.message);
+  }
   revalidatePath("/orders");
   return { ok: true, message: "Order cancelled with an audit record." };
 }
