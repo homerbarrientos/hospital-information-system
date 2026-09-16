@@ -34,8 +34,8 @@ export default async function Clinical() {
         .order("last_name"),
       supabase
         .from("allergies")
-        .select("patient_id,substance,reaction")
-        .eq("status", "active"),
+        .select("id,patient_id,substance,reaction,severity,status,version")
+        .order("recorded_at", { ascending: false }),
       supabase
         .from("encounters")
         .select("id,encounter_no,status,service_date,patient_id,responsible_doctor_id")
