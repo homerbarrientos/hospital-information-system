@@ -12,7 +12,7 @@ export default async function Orders() {
   const facilityId = roles?.[0]?.facility_id;
   if (!facilityId) return <div className="form-error">No active facility assignment.</div>;
 
-  const [{ data: patients }, { data: encounters }, { data: orders }, {data:doctorAssignments}, {data:referenceOptions}] = await Promise.all([
+  const [{ data: patients }, { data: encounters }, { data: orders, error: ordersError }, {data:doctorAssignments}, {data:referenceOptions}] = await Promise.all([
     supabase.from("patients").select("id,mrn,first_name,last_name").order("last_name"),
     supabase.from("encounters").select("id,encounter_no,patient_id,status,service_date,encounter_type,responsible_doctor_id").eq("facility_id", facilityId).neq("status", "cancelled").order("created_at", { ascending: false }).limit(100),
     supabase.from("clinical_orders").select("id,encounter_id,order_no,order_type,priority,status,ordered_at,instructions,version,cancellation_reason,ordering_doctor_id").order("ordered_at", { ascending: false }).limit(100),
@@ -31,6 +31,7 @@ export default async function Orders() {
   const doctors=(doctorAssignments||[]).flatMap((row)=>{const doctor=Array.isArray(row.doctors)?row.doctors[0]:row.doctors;return doctor&&doctor.status==="active"?[doctor]:[];});
   return <>
     <PageHeading eyebrow="Diagnostics" title="Orders and results" description="Create clinical requests, manage work status, validate results, and return them to the patient chart."/>
+    {ordersError && <div className="form-error">Unable to load clinical orders: {ordersError.message}</div>}
     <OrdersWorkspace patients={patients || []} encounters={encounters || []} orders={orders || []} items={items || []} results={results || []} doctors={doctors} referenceOptions={referenceOptions || []}/>
   </>;
 }
