@@ -1,1 +1,33 @@
-import{Plus}from"lucide-react";import{DemoNotice,PageHeading}from"@/components/app-shell";import{ModuleTable}from"@/components/module-table";const rows=[{primary:"CBC",secondary:"ORD-260914-104",detail:"Maria Santos · Laboratory",status:"For validation",tone:"amber"},{primary:"Urinalysis",secondary:"ORD-260914-103",detail:"Pedro Ramos · Laboratory",status:"Collected",tone:"blue"},{primary:"Chest X-ray",secondary:"ORD-260914-098",detail:"Ramon Aquino · External diagnostic",status:"Result released",tone:"green"}];export default function Orders(){return <><PageHeading eyebrow="Diagnostics" title="Orders and results" description="Route requests to a worklist, validate results, and return them to the patient encounter." action={<button className="btn btn-primary"><Plus size={15}/>Create order</button>}/><DemoNotice/><ModuleTable headers={["Order / Reference","Patient and service","Status","Action"]} rows={rows}/></>}
+import { redirect } from "next/navigation";
+import { PageHeading } from "@/components/app-shell";
+import { OrdersWorkspace } from "@/components/orders-workspace";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function Orders() {
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims.sub;
+  if (!userId) redirect("/login");
+  const { data: roles } = await supabase.from("user_roles").select("facility_id").eq("user_id", userId).eq("active", true).limit(1);
+  const facilityId = roles?.[0]?.facility_id;
+  if (!facilityId) return <div className="form-error">No active facility assignment.</div>;
+
+  const [{ data: patients }, { data: encounters }, { data: orders }] = await Promise.all([
+    supabase.from("patients").select("id,mrn,first_name,last_name").order("last_name"),
+    supabase.from("encounters").select("id,encounter_no,patient_id,status,service_date,encounter_type").eq("facility_id", facilityId).neq("status", "cancelled").order("created_at", { ascending: false }).limit(100),
+    supabase.from("clinical_orders").select("id,encounter_id,order_no,order_type,priority,status,ordered_at,instructions,version,cancellation_reason").order("ordered_at", { ascending: false }).limit(100),
+  ]);
+  const orderIds = (orders || []).map((order) => order.id);
+  const { data: items } = orderIds.length
+    ? await supabase.from("order_items").select("id,order_id,description,status,charge_on").in("order_id", orderIds)
+    : { data: [] };
+  const itemIds = (items || []).map((item) => item.id);
+  const { data: results } = itemIds.length
+    ? await supabase.from("clinical_results").select("id,order_item_id,result_text,status,entered_at,validated_at,correction_reason").in("order_item_id", itemIds).order("entered_at", { ascending: false })
+    : { data: [] };
+
+  return <>
+    <PageHeading eyebrow="Diagnostics" title="Orders and results" description="Create clinical requests, manage work status, validate results, and return them to the patient chart."/>
+    <OrdersWorkspace patients={patients || []} encounters={encounters || []} orders={orders || []} items={items || []} results={results || []}/>
+  </>;
+}

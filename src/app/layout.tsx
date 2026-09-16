@@ -3,6 +3,7 @@ import "./globals.css";
 import "./workflows.css";
 import "./clinical.css";
 import "./adt.css";
+import "./orders.css";
 import "./navigation.css";
 import "./encounter-details.css";
 import{RootShell}from"@/components/root-shell";
