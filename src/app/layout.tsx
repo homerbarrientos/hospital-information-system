@@ -5,6 +5,7 @@ import "./clinical.css";
 import "./adt.css";
 import "./orders.css";
 import "./doctors.css";
+import "./reference-data.css";
 import "./navigation.css";
 import "./encounter-details.css";
 import{RootShell}from"@/components/root-shell";

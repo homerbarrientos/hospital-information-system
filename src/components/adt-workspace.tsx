@@ -20,15 +20,16 @@ type Ward = { id: string; name: string };
 type Encounter = { id: string; patient_id: string; responsible_doctor_id:string|null };
 type Admission = { id: string; encounter_id: string; admission_no: string; status: string; admitted_at: string; admitting_doctor_id:string|null; attending_doctor_id:string|null };
 type Doctor={id:string;first_name:string;last_name:string;suffix:string|null;specialty:string};
+type ReferenceOption={code:string;label:string};
 type Stay = { admission_id: string; bed_id: string; ended_at: string | null };
 const initialState: AdtState = { ok: false, message: "" };
 const doctorLabel=(doctor?:Doctor)=>doctor?`Dr. ${doctor.last_name}, ${doctor.first_name}${doctor.suffix?` ${doctor.suffix}`:""}`:"Not assigned";
 
 export function AdtWorkspace({
-  patients, beds, wards, encounters, admissions, stays, facilityId, doctors,
+  patients, beds, wards, encounters, admissions, stays, facilityId, doctors, dispositions,
 }: {
   patients: Patient[]; beds: Bed[]; wards: Ward[]; encounters: Encounter[];
-  admissions: Admission[]; stays: Stay[]; facilityId: string; doctors:Doctor[];
+  admissions: Admission[]; stays: Stay[]; facilityId: string; doctors:Doctor[];dispositions:ReferenceOption[];
 }) {
   const [open, setOpen] = useState(false);
   const available = beds.filter((bed) => bed.status === "available");
@@ -55,7 +56,7 @@ export function AdtWorkspace({
               <td>{doctorLabel(doctors.find(doctor=>doctor.id===admission.attending_doctor_id))}</td>
               <td>{stay ? bedLabel(stay.bed_id) : "Discharged"}</td>
               <td><span className={`badge ${admission.status === "discharged" ? "blue" : "green"}`}>{admission.status}</span></td>
-              <td><AdmissionActions admission={admission} patient={patient} availableBeds={available} bedLabel={bedLabel} doctors={doctors}/></td>
+              <td><AdmissionActions admission={admission} patient={patient} availableBeds={available} bedLabel={bedLabel} doctors={doctors} dispositions={dispositions}/></td>
             </tr>;
           })}
           {!admissions.length && <tr><td colSpan={6} className="empty-state">No admissions recorded.</td></tr>}
@@ -67,9 +68,9 @@ export function AdtWorkspace({
 }
 
 function AdmissionActions({
-  admission, patient, availableBeds, bedLabel, doctors,
+  admission, patient, availableBeds, bedLabel, doctors, dispositions,
 }: {
-  admission: Admission; patient?: Patient; availableBeds: Bed[]; bedLabel: (bedId: string) => string; doctors:Doctor[];
+  admission: Admission; patient?: Patient; availableBeds: Bed[]; bedLabel: (bedId: string) => string; doctors:Doctor[];dispositions:ReferenceOption[];
 }) {
   const [transferOpen, setTransferOpen] = useState(false);
   const [dischargeOpen, setDischargeOpen] = useState(false);
@@ -85,7 +86,7 @@ function AdmissionActions({
       </>}
     </div>
     {transferOpen && <TransferDialog admissionId={admission.id} admissionNumber={admission.admission_no} patientName={patientName} availableBeds={availableBeds} bedLabel={bedLabel} close={() => setTransferOpen(false)}/>}
-    {dischargeOpen && <DischargeDialog admissionId={admission.id} admissionNumber={admission.admission_no} patientName={patientName} doctors={doctors} defaultDoctorId={admission.attending_doctor_id||""} close={() => setDischargeOpen(false)} viewChart={() => setChartOpen(true)}/>} 
+    {dischargeOpen && <DischargeDialog admissionId={admission.id} admissionNumber={admission.admission_no} patientName={patientName} doctors={doctors} dispositions={dispositions} defaultDoctorId={admission.attending_doctor_id||""} close={() => setDischargeOpen(false)} viewChart={() => setChartOpen(true)}/>} 
     {chartOpen && <PatientChartDialog admissionId={admission.id} close={() => setChartOpen(false)}/>}
   </>;
 }
@@ -117,9 +118,9 @@ function TransferDialog({
 }
 
 function DischargeDialog({
-  admissionId, admissionNumber, patientName, close, viewChart, doctors, defaultDoctorId,
+  admissionId, admissionNumber, patientName, close, viewChart, doctors, defaultDoctorId, dispositions,
 }: {
-  admissionId: string; admissionNumber: string; patientName: string; close: () => void; viewChart: () => void; doctors:Doctor[]; defaultDoctorId:string;
+  admissionId: string; admissionNumber: string; patientName: string; close: () => void; viewChart: () => void; doctors:Doctor[]; defaultDoctorId:string;dispositions:ReferenceOption[];
 }) {
   const [state, action, pending] = useActionState(dischargePatient, initialState);
   return <div className="modal-backdrop">
@@ -132,7 +133,7 @@ function DischargeDialog({
       <form action={action} className="adt-dialog-form discharge-form">
         <input type="hidden" name="admission_id" value={admissionId}/>
         <label className="wide">Discharging doctor<select required name="doctor_id" defaultValue={defaultDoctorId}><option value="" disabled>Select discharging doctor</option>{doctors.map(doctor=><option key={doctor.id} value={doctor.id}>{doctorLabel(doctor)} · {doctor.specialty}</option>)}</select></label>
-        <label>Discharge disposition<select required name="disposition" defaultValue=""><option value="" disabled>Select outcome or destination</option><option>Home</option><option>Transferred to another facility</option><option>Home against medical advice</option><option>Expired</option><option>Other</option></select></label>
+        <label>Discharge disposition<select required name="disposition" defaultValue=""><option value="" disabled>Select outcome or destination</option>{dispositions.map(option=><option key={option.code} value={option.code}>{option.label}</option>)}</select></label>
         <label>Condition at discharge<input required minLength={2} maxLength={250} name="condition" placeholder="Stable, improved, guarded, or other condition"/></label>
         <label className="wide">Final diagnosis<textarea required minLength={2} maxLength={2000} name="final_diagnosis" rows={5} placeholder="Enter the confirmed diagnosis or diagnoses at discharge"/></label>
         <label className="wide">Discharge instructions<textarea required minLength={10} maxLength={4000} name="instructions" rows={8} placeholder="Care instructions, restrictions, warning signs, and when to seek urgent care"/></label>

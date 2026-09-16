@@ -6,9 +6,10 @@ import { changeDoctorStatus, saveDoctor, type DoctorState } from "@/app/administ
 
 export type Doctor = { id:string; first_name:string; middle_name:string|null; last_name:string; suffix:string|null; license_number:string; specialty:string; phone:string|null; email:string|null; status:string; version:number; department_id:string|null };
 type Department = { id:string; name:string };
+type ReferenceOption={code:string;label:string};
 const initial: DoctorState = { ok:false, message:"" };
 
-export function DoctorsWorkspace({ doctors, departments, facilityId }: { doctors:Doctor[]; departments:Department[]; facilityId:string }) {
+export function DoctorsWorkspace({ doctors, departments, facilityId, specialties }: { doctors:Doctor[]; departments:Department[]; facilityId:string;specialties:ReferenceOption[] }) {
   const [editing,setEditing]=useState<Doctor|null|"new">(null);
   const [statusDoctor,setStatusDoctor]=useState<Doctor|null>(null);
   return <>
@@ -19,18 +20,18 @@ export function DoctorsWorkspace({ doctors, departments, facilityId }: { doctors
         {!doctors.length&&<tr><td colSpan={6} className="empty-state">No doctors registered yet.</td></tr>}
       </tbody></table></div>
     </section>
-    {editing&&<DoctorDialog doctor={editing==="new"?undefined:editing} departments={departments} facilityId={facilityId} close={()=>setEditing(null)}/>} 
+    {editing&&<DoctorDialog doctor={editing==="new"?undefined:editing} departments={departments} facilityId={facilityId} specialties={specialties} close={()=>setEditing(null)}/>} 
     {statusDoctor&&<StatusDialog doctor={statusDoctor} facilityId={facilityId} close={()=>setStatusDoctor(null)}/>} 
   </>;
 }
 
 function Head({title,close}:{title:string;close:()=>void}){return <div className="modal-head"><div><p className="eyebrow">Doctor Master List</p><h3>{title}</h3></div><button type="button" className="icon-btn" onClick={close} aria-label="Close"><X size={17}/></button></div>}
-function DoctorDialog({doctor,departments,facilityId,close}:{doctor?:Doctor;departments:Department[];facilityId:string;close:()=>void}){
+function DoctorDialog({doctor,departments,facilityId,close,specialties}:{doctor?:Doctor;departments:Department[];facilityId:string;close:()=>void;specialties:ReferenceOption[]}){
   const [state,action,pending]=useActionState(saveDoctor,initial);
   return <div className="modal-backdrop"><section className="modal doctor-modal" role="dialog" aria-modal="true"><Head title={doctor?"Edit doctor":"Add doctor"} close={close}/><form action={action} className="patient-form">
     <input type="hidden" name="facility_id" value={facilityId}/>{doctor&&<><input type="hidden" name="doctor_id" value={doctor.id}/><input type="hidden" name="version" value={doctor.version}/></>}
     <label>First name<input required minLength={2} maxLength={100} name="first_name" defaultValue={doctor?.first_name}/></label><label>Middle name<input maxLength={100} name="middle_name" defaultValue={doctor?.middle_name||""}/></label><label>Last name<input required minLength={2} maxLength={100} name="last_name" defaultValue={doctor?.last_name}/></label><label>Suffix<input maxLength={20} name="suffix" defaultValue={doctor?.suffix||""} placeholder="Jr., III"/></label>
-    <label>License / PRC number<input required minLength={3} maxLength={80} name="license_number" defaultValue={doctor?.license_number}/></label><label>Specialty<input required minLength={2} maxLength={150} name="specialty" defaultValue={doctor?.specialty} placeholder="General Medicine"/></label>
+    <label>License / PRC number<input required minLength={3} maxLength={80} name="license_number" defaultValue={doctor?.license_number}/></label><label>Specialty<select required name="specialty" defaultValue={doctor?.specialty||""}><option value="" disabled>Select specialty</option>{specialties.map(option=><option key={option.code} value={option.label}>{option.label}</option>)}</select></label>
     <label>Department<select name="department_id" defaultValue={doctor?.department_id||""}><option value="">All departments</option>{departments.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label>Phone<input maxLength={40} name="phone" defaultValue={doctor?.phone||""}/></label><label className="wide">Email<input type="email" maxLength={200} name="email" defaultValue={doctor?.email||""}/></label>
     {doctor&&<label className="wide">Reason for modification<textarea required minLength={5} maxLength={500} rows={4} name="reason" placeholder="Explain why the doctor record is being changed"/></label>}
     {state.message&&<div className={state.ok?"form-success wide":"form-error wide"}>{state.message}</div>}<div className="form-actions wide"><button type="button" className="btn btn-secondary" onClick={close}>{state.ok?"Close":"Cancel"}</button>{!state.ok&&<button disabled={pending} className="btn btn-primary"><Stethoscope size={15}/>{pending?"Saving…":"Save doctor"}</button>}</div>
