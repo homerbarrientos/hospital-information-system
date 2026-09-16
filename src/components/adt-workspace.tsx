@@ -1,12 +1,15 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { ArrowRightLeft, DoorOpen, Eye, FileUp, Plus, X } from "lucide-react";
+import { ArrowRightLeft, DoorOpen, ExternalLink, Eye, FilePlus2, FileUp, Pencil, Plus, Trash2, X } from "lucide-react";
 import {
+  addDischargeAttachment,
   admitPatient,
   dischargePatient,
   loadPatientChart,
+  removeDischargeAttachment,
   transferPatient,
+  updateDischargeAttachment,
   type AdtState,
   type PatientChart,
 } from "@/app/admissions/actions";
@@ -102,7 +105,7 @@ function TransferDialog({
       <form action={action} className="adt-dialog-form">
         <input type="hidden" name="admission_id" value={admissionId}/>
         <label>Destination bed<select required name="bed_id" defaultValue=""><option value="" disabled>Select an available bed</option>{availableBeds.map((bed) => <option key={bed.id} value={bed.id}>{bedLabel(bed.id)}</option>)}</select></label>
-        <label>Transfer reason<textarea required name="reason" rows={5} placeholder="Document the clinical or operational reason for this transfer"/></label>
+        <label>Transfer reason<textarea required minLength={5} maxLength={500} name="reason" rows={6} placeholder="Document the clinical or operational reason for this transfer"/></label>
         {state.message && <div className={state.ok ? "form-success" : "form-error"}>{state.message}</div>}
         <div className="form-actions"><button type="button" className="btn btn-secondary" onClick={close}>Cancel</button><button disabled={pending || state.ok} className="btn adt-transfer-btn"><ArrowRightLeft size={15}/>{pending ? "Transferring…" : state.ok ? "Transferred" : "Confirm transfer"}</button></div>
       </form>
@@ -126,11 +129,11 @@ function DischargeDialog({
       <form action={action} className="adt-dialog-form discharge-form">
         <input type="hidden" name="admission_id" value={admissionId}/>
         <label>Discharge disposition<select required name="disposition" defaultValue=""><option value="" disabled>Select outcome or destination</option><option>Home</option><option>Transferred to another facility</option><option>Home against medical advice</option><option>Expired</option><option>Other</option></select></label>
-        <label>Condition at discharge<input required name="condition" placeholder="Stable, improved, guarded, or other condition"/></label>
-        <label className="wide">Final diagnosis<textarea required name="final_diagnosis" rows={3} placeholder="Enter the confirmed diagnosis or diagnoses at discharge"/></label>
-        <label className="wide">Discharge instructions<textarea required name="instructions" rows={5} placeholder="Care instructions, restrictions, warning signs, and when to seek urgent care"/></label>
-        <label>Follow-up or referral<textarea name="follow_up" rows={4} placeholder="Clinic, provider, date, or referral details"/></label>
-        <label>Discharge medications<textarea name="medications" rows={4} placeholder="Medicine, dose, route, frequency, and duration"/></label>
+        <label>Condition at discharge<input required minLength={2} maxLength={250} name="condition" placeholder="Stable, improved, guarded, or other condition"/></label>
+        <label className="wide">Final diagnosis<textarea required minLength={2} maxLength={2000} name="final_diagnosis" rows={5} placeholder="Enter the confirmed diagnosis or diagnoses at discharge"/></label>
+        <label className="wide">Discharge instructions<textarea required minLength={10} maxLength={4000} name="instructions" rows={8} placeholder="Care instructions, restrictions, warning signs, and when to seek urgent care"/></label>
+        <label>Follow-up or referral<textarea minLength={2} maxLength={2000} name="follow_up" rows={6} placeholder="Clinic, provider, date, or referral details"/></label>
+        <label>Discharge medications<textarea minLength={2} maxLength={2000} name="medications" rows={6} placeholder="Medicine, dose, route, frequency, and duration"/></label>
         <label className="wide attachment-field"><span><FileUp size={16}/>Optional supporting document</span><input type="file" name="attachment" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"/><small>PDF, JPG, or PNG. Maximum 3 MB. Do not upload a duplicate of the patient chart.</small></label>
         {state.message && <div className={state.ok ? "form-success wide" : "form-error wide"}>{state.message}</div>}
         <div className="form-actions wide"><button type="button" className="btn btn-secondary" onClick={close}>{state.ok ? "Close" : "Cancel"}</button>{!state.ok && <button disabled={pending} className="btn adt-discharge-btn"><DoorOpen size={15}/>{pending ? "Completing discharge…" : "Complete discharge"}</button>}</div>
@@ -150,15 +153,23 @@ function EmptyRecord({ text = "No records documented." }: { text?: string }) {
 function PatientChartDialog({ admissionId, close }: { admissionId: string; close: () => void }) {
   const [chart, setChart] = useState<PatientChart | null>(null);
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [documentAction, setDocumentAction] = useState<{
+    mode: "add" | "edit" | "remove";
+    attachment?: PatientChart["attachments"][number];
+  } | null>(null);
   useEffect(() => {
     let active = true;
     loadPatientChart(admissionId).then((result) => {
       if (!active) return;
-      if (result.ok) setChart(result.chart); else setError(result.message);
+      if (result.ok) {
+        setChart(result.chart);
+        setError("");
+      } else setError(result.message);
     });
     return () => { active = false; };
-  }, [admissionId]);
-  return <div className="modal-backdrop chart-backdrop">
+  }, [admissionId, refreshKey]);
+  return <><div className="modal-backdrop chart-backdrop">
     <section className="modal chart-modal" role="dialog" aria-modal="true">
       <DialogHead eyebrow="Read-only clinical record" title={chart ? `${chart.patient.name} · ${chart.patient.mrn}` : "Patient chart"} close={close}/>
       {!chart && !error && <div className="chart-loading">Loading the secure patient chart…</div>}
@@ -177,8 +188,79 @@ function PatientChartDialog({ admissionId, close }: { admissionId: string; close
           <ChartSection title="Medications">{chart.medications.length ? <ul>{chart.medications.map((medication, index) => <li key={index}><strong>{medication.number}</strong><span>{medication.status}</span><p>{medication.items.join("; ") || "No medicine items"}</p></li>)}</ul> : <EmptyRecord/>}</ChartSection>
         </div>
         <ChartSection title="Bed movement history">{chart.movements.length ? <ul>{chart.movements.map((movement, index) => <li key={index}><strong>{movement.location}</strong><span>{new Date(movement.startedAt).toLocaleString()} to {movement.endedAt ? new Date(movement.endedAt).toLocaleString() : "present"}</span>{movement.reason && <p>{movement.reason}</p>}</li>)}</ul> : <EmptyRecord/>}</ChartSection>
-        {chart.dischargeSummary && <ChartSection title="Discharge summary"><div className="chart-summary"><p><b>Final diagnosis:</b> {chart.dischargeSummary.finalDiagnosis}</p><p><b>Condition:</b> {chart.dischargeSummary.condition}</p><p><b>Instructions:</b> {chart.dischargeSummary.instructions}</p><p><b>Follow-up:</b> {chart.dischargeSummary.followUp || "Not recorded"}</p><p><b>Medications:</b> {chart.dischargeSummary.medications || "Not recorded"}</p>{chart.attachments.map((file) => <a key={file.url} href={file.url} target="_blank" rel="noreferrer">{file.name}</a>)}</div></ChartSection>}
+        {chart.dischargeSummary && <>
+          <ChartSection title="Discharge summary"><div className="chart-summary"><p><b>Final diagnosis:</b> {chart.dischargeSummary.finalDiagnosis}</p><p><b>Condition:</b> {chart.dischargeSummary.condition}</p><p><b>Instructions:</b> {chart.dischargeSummary.instructions}</p><p><b>Follow-up:</b> {chart.dischargeSummary.followUp || "Not recorded"}</p><p><b>Medications:</b> {chart.dischargeSummary.medications || "Not recorded"}</p></div></ChartSection>
+          <ChartSection title="Supporting documents">
+            <div className="attachment-toolbar"><p>Private discharge attachments with an audited history.</p><button className="btn btn-primary" onClick={() => setDocumentAction({ mode: "add" })}><FilePlus2 size={15}/>Add attachment</button></div>
+            {chart.attachments.length ? <div className="attachment-list">{chart.attachments.map((file) => <article key={file.id} className="attachment-card">
+              <div><strong>{file.name}</strong><span>{file.description || "No description"} · {(file.sizeBytes / 1024).toFixed(0)} KB · {new Date(file.uploadedAt).toLocaleString()}</span></div>
+              <div className="attachment-actions">
+                <a className="btn adt-view-btn" href={file.url} target="_blank" rel="noreferrer"><ExternalLink size={14}/>View</a>
+                <button className="btn adt-view-btn" onClick={() => setDocumentAction({ mode: "edit", attachment: file })}><Pencil size={14}/>Edit</button>
+                <button className="btn attachment-remove-btn" onClick={() => setDocumentAction({ mode: "remove", attachment: file })}><Trash2 size={14}/>Remove</button>
+              </div>
+            </article>)}</div> : <EmptyRecord text="No supporting documents attached."/>}
+          </ChartSection>
+        </>}
       </div>}
+    </section>
+  </div>
+  {documentAction && <AttachmentManagerDialog
+    mode={documentAction.mode}
+    admissionId={admissionId}
+    attachment={documentAction.attachment}
+    close={() => setDocumentAction(null)}
+    saved={() => {
+      setDocumentAction(null);
+      setRefreshKey((current) => current + 1);
+    }}
+  />}</>;
+}
+
+function AttachmentManagerDialog({
+  mode, admissionId, attachment, close, saved,
+}: {
+  mode: "add" | "edit" | "remove";
+  admissionId: string;
+  attachment?: PatientChart["attachments"][number];
+  close: () => void;
+  saved: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [state, setState] = useState<AdtState>(initialState);
+  const title = mode === "add" ? "Add supporting document" : mode === "edit" ? "Edit attachment details" : "Remove attachment";
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPending(true);
+    const form = new FormData(event.currentTarget);
+    const result = mode === "add"
+      ? await addDischargeAttachment(form)
+      : mode === "edit"
+        ? await updateDischargeAttachment(form)
+        : await removeDischargeAttachment(form);
+    setPending(false);
+    setState(result);
+    if (result.ok) saved();
+  };
+  return <div className="modal-backdrop attachment-backdrop">
+    <section className="modal attachment-modal" role="dialog" aria-modal="true">
+      <DialogHead eyebrow="Discharge attachment" title={title} close={close}/>
+      <form onSubmit={submit} className="adt-dialog-form attachment-form">
+        <input type="hidden" name="admission_id" value={admissionId}/>
+        {attachment && <input type="hidden" name="document_id" value={attachment.id}/>}
+        {mode === "add" && <label>Document file<input required type="file" name="attachment" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"/><small>PDF, JPG, or PNG. Maximum 3 MB.</small></label>}
+        {mode !== "remove" && <>
+          <label>Document title<input required minLength={2} maxLength={120} name="display_name" defaultValue={attachment?.name || ""} placeholder="Example: Referral letter"/></label>
+          <label>Description<textarea minLength={2} maxLength={1000} rows={6} name="description" defaultValue={attachment?.description || ""} placeholder="Describe what this document contains"/></label>
+        </>}
+        {mode === "edit" && <label>Reason for modification<textarea required minLength={5} maxLength={500} rows={5} name="reason" placeholder="Explain why the attachment details are being changed"/></label>}
+        {mode === "remove" && <>
+          <div className="attachment-warning"><strong>{attachment?.name}</strong><p>This removes the document from the active chart. The audit history is retained.</p></div>
+          <label>Reason for removal<textarea required minLength={5} maxLength={500} rows={6} name="reason" placeholder="Explain why this attachment should be removed"/></label>
+        </>}
+        {state.message && <div className={state.ok ? "form-success" : "form-error"}>{state.message}</div>}
+        <div className="form-actions"><button type="button" className="btn btn-secondary" onClick={close}>Cancel</button><button disabled={pending} className={`btn ${mode === "remove" ? "attachment-remove-btn" : "btn-primary"}`}>{pending ? "Saving…" : mode === "add" ? "Upload attachment" : mode === "edit" ? "Save changes" : "Remove attachment"}</button></div>
+      </form>
     </section>
   </div>;
 }

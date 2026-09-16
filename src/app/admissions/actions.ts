@@ -16,7 +16,15 @@ export type PatientChart = {
   medications: Array<{ number: string; status: string; prescribedAt: string; items: string[] }>;
   movements: Array<{ location: string; startedAt: string; endedAt: string | null; reason: string | null }>;
   dischargeSummary: null | { finalDiagnosis: string; condition: string; instructions: string; followUp: string | null; medications: string | null };
-  attachments: Array<{ name: string; url: string }>;
+  attachments: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    mimeType: string;
+    sizeBytes: number;
+    uploadedAt: string;
+    url: string;
+  }>;
 };
 export type PatientChartResult =
   | { ok: true; chart: PatientChart }
@@ -24,6 +32,11 @@ export type PatientChartResult =
 
 const value = (form: FormData, key: string) => String(form.get(key) || "").trim();
 const empty = Promise.resolve({ data: [] as Array<Record<string, unknown>> });
+const textError = (label: string, text: string, minimum: number, maximum: number) => {
+  if (text.length < minimum) return `${label} must contain at least ${minimum} characters.`;
+  if (text.length > maximum) return `${label} cannot exceed ${maximum} characters.`;
+  return "";
+};
 
 async function call(name: string, args: Record<string, string>): Promise<AdtState> {
   const supabase = await createClient();
@@ -55,6 +68,13 @@ export async function dischargePatient(_: AdtState, form: FormData): Promise<Adt
   if (["disposition", "final_diagnosis", "condition", "instructions"].some((key) => !value(form, key))) {
     return { ok: false, message: "Complete all required discharge fields." };
   }
+  const validationError =
+    textError("Final diagnosis", value(form, "final_diagnosis"), 2, 2000) ||
+    textError("Condition at discharge", value(form, "condition"), 2, 250) ||
+    textError("Discharge instructions", value(form, "instructions"), 10, 4000) ||
+    (value(form, "follow_up") ? textError("Follow-up plan", value(form, "follow_up"), 2, 2000) : "") ||
+    (value(form, "medications") ? textError("Discharge medications", value(form, "medications"), 2, 2000) : "");
+  if (validationError) return { ok: false, message: validationError };
   const supabase = await createClient();
   const admissionId = value(form, "admission_id");
   const { data: admission, error: admissionError } = await supabase
@@ -102,6 +122,84 @@ export async function dischargePatient(_: AdtState, form: FormData): Promise<Adt
   }
   revalidatePath("/admissions");
   return { ok: true, message: "Patient discharged and summary saved successfully." };
+}
+
+export async function addDischargeAttachment(form: FormData): Promise<AdtState> {
+  const supabase = await createClient();
+  const admissionId = value(form, "admission_id");
+  const displayName = value(form, "display_name");
+  const description = value(form, "description");
+  const nameError = textError("Document title", displayName, 2, 120);
+  const descriptionError = description ? textError("Description", description, 2, 1000) : "";
+  if (nameError || descriptionError) return { ok: false, message: nameError || descriptionError };
+  const attachment = form.get("attachment");
+  if (!(attachment instanceof File) || attachment.size < 1) return { ok: false, message: "Choose a document to upload." };
+  const allowed = new Map([["application/pdf", "pdf"], ["image/jpeg", "jpg"], ["image/png", "png"]]);
+  const extension = allowed.get(attachment.type);
+  if (!extension) return { ok: false, message: "Attachment must be a PDF, JPG, or PNG file." };
+  if (attachment.size > 3 * 1024 * 1024) return { ok: false, message: "Attachment must be 3 MB or smaller." };
+
+  const { data: admission, error: admissionError } = await supabase
+    .from("admissions").select("encounter_id").eq("id", admissionId).single();
+  if (admissionError || !admission) return { ok: false, message: admissionError?.message || "Admission not found." };
+  const { data: encounter, error: encounterError } = await supabase
+    .from("encounters").select("facility_id").eq("id", admission.encounter_id).single();
+  if (encounterError || !encounter) return { ok: false, message: encounterError?.message || "Encounter not found." };
+
+  const storagePath = `${encounter.facility_id}/${admissionId}/${randomUUID()}.${extension}`;
+  const { error: uploadError } = await supabase.storage
+    .from("discharge-documents").upload(storagePath, attachment, { contentType: attachment.type, upsert: false });
+  if (uploadError) return { ok: false, message: uploadError.message };
+  const { error } = await supabase.rpc("add_discharge_document", {
+    target_admission: admissionId,
+    file_path: storagePath,
+    original_file_name: attachment.name,
+    document_title: displayName,
+    document_description: description,
+    file_type: attachment.type,
+    file_size: attachment.size,
+  });
+  if (error) {
+    await supabase.storage.from("discharge-documents").remove([storagePath]);
+    return { ok: false, message: error.message };
+  }
+  revalidatePath("/admissions");
+  return { ok: true, message: "Attachment uploaded successfully." };
+}
+
+export async function updateDischargeAttachment(form: FormData): Promise<AdtState> {
+  const displayName = value(form, "display_name");
+  const description = value(form, "description");
+  const reason = value(form, "reason");
+  const validationError =
+    textError("Document title", displayName, 2, 120) ||
+    (description ? textError("Description", description, 2, 1000) : "") ||
+    textError("Modification reason", reason, 5, 500);
+  if (validationError) return { ok: false, message: validationError };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_discharge_document", {
+    target_document: value(form, "document_id"),
+    document_title: displayName,
+    document_description: description,
+    modification_reason: reason,
+  });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/admissions");
+  return { ok: true, message: "Attachment details updated." };
+}
+
+export async function removeDischargeAttachment(form: FormData): Promise<AdtState> {
+  const reason = value(form, "reason");
+  const validationError = textError("Removal reason", reason, 5, 500);
+  if (validationError) return { ok: false, message: validationError };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_discharge_document", {
+    target_document: value(form, "document_id"),
+    removal_reason: reason,
+  });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/admissions");
+  return { ok: true, message: "Attachment removed from the active record." };
 }
 
 export async function loadPatientChart(admissionId: string): Promise<PatientChartResult> {
@@ -157,7 +255,7 @@ export async function loadPatientChart(admissionId: string): Promise<PatientChar
     orderItems.length ? supabase.from("clinical_results").select("order_item_id,result_text,status").in("order_item_id", orderItems.map((item) => item.id)) : empty,
     prescriptionItems.length ? supabase.from("products").select("id,name").in("id", prescriptionItems.map((item) => item.product_id)) : empty,
     beds.length ? supabase.from("wards").select("id,name").in("id", beds.map((item) => item.ward_id)) : empty,
-    summary?.id ? supabase.from("discharge_documents").select("storage_path,original_name").eq("discharge_summary_id", summary.id) : empty,
+    summary?.id ? supabase.from("discharge_documents").select("id,storage_path,original_name,display_name,description,mime_type,size_bytes,uploaded_at").eq("discharge_summary_id", summary.id).is("removed_at", null).order("uploaded_at", { ascending: false }) : empty,
   ]);
   const results = resultsResponse.data || [];
   const products = productsResponse.data || [];
@@ -165,7 +263,15 @@ export async function loadPatientChart(admissionId: string): Promise<PatientChar
   const documents = documentsResponse.data || [];
   const attachments = await Promise.all(documents.map(async (document) => {
     const { data } = await supabase.storage.from("discharge-documents").createSignedUrl(String(document.storage_path), 300);
-    return { name: String(document.original_name), url: data?.signedUrl || "" };
+    return {
+      id: String(document.id),
+      name: String(document.display_name || document.original_name),
+      description: document.description ? String(document.description) : null,
+      mimeType: String(document.mime_type),
+      sizeBytes: Number(document.size_bytes),
+      uploadedAt: String(document.uploaded_at),
+      url: data?.signedUrl || "",
+    };
   }));
 
   const encounterMap = new Map(encounterRows.map((item) => [item.id, item]));
