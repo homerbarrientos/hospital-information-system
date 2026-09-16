@@ -1,0 +1,1 @@
+.doctor-table{min-width:1050px}.doctor-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.doctor-modal{width:min(820px,calc(100vw - 32px));max-height:calc(100vh - 40px);overflow:auto}.doctor-status-modal{width:min(560px,calc(100vw - 32px))}.doctor-status-modal p{color:var(--muted);line-height:1.6}

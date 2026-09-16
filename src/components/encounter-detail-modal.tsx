@@ -63,11 +63,13 @@ export function EncounterDetailModal({
   patient,
   allergies: initialAllergies,
   onClose,
+  providerName,
 }: {
   encounter: Encounter;
   patient?: Patient;
   allergies: Allergy[];
   onClose: () => void;
+  providerName?: string;
 }) {
   const router = useRouter();
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -163,14 +165,18 @@ export function EncounterDetailModal({
   }, [encounter.id, encounter.patient_id, initialAllergies]);
 
   useEffect(() => {
-    void loadDetail();
+    const timer=window.setTimeout(()=>void loadDetail(),0);
+    return ()=>window.clearTimeout(timer);
   }, [loadDetail]);
 
   useEffect(() => {
     if (!amendmentState.ok) return;
-    setEditing(false);
-    void loadDetail();
-    router.refresh();
+    const timer=window.setTimeout(()=>{
+      setEditing(false);
+      void loadDetail();
+      router.refresh();
+    },0);
+    return ()=>window.clearTimeout(timer);
   }, [amendmentState, loadDetail, router]);
 
   const vitalValue = (code: string) =>
@@ -241,6 +247,7 @@ export function EncounterDetailModal({
                       : "None recorded"
                   }
                 />
+                <Info label="Responsible doctor" value={providerName || "Not assigned"} />
                 <Info label="Chief complaint" value={detail.complaint || "Not recorded"} />
                 <Info label="Clinical / SOAP note" value={detail.soap || "Not recorded"} />
                 <Info label="Working diagnosis" value={detail.diagnosis || "Not recorded"} />

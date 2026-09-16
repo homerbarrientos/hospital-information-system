@@ -17,16 +17,18 @@ import {
 type Patient = { id: string; mrn: string; first_name: string; last_name: string };
 type Bed = { id: string; code: string; status: string; ward_id: string };
 type Ward = { id: string; name: string };
-type Encounter = { id: string; patient_id: string };
-type Admission = { id: string; encounter_id: string; admission_no: string; status: string; admitted_at: string };
+type Encounter = { id: string; patient_id: string; responsible_doctor_id:string|null };
+type Admission = { id: string; encounter_id: string; admission_no: string; status: string; admitted_at: string; admitting_doctor_id:string|null; attending_doctor_id:string|null };
+type Doctor={id:string;first_name:string;last_name:string;suffix:string|null;specialty:string};
 type Stay = { admission_id: string; bed_id: string; ended_at: string | null };
 const initialState: AdtState = { ok: false, message: "" };
+const doctorLabel=(doctor?:Doctor)=>doctor?`Dr. ${doctor.last_name}, ${doctor.first_name}${doctor.suffix?` ${doctor.suffix}`:""}`:"Not assigned";
 
 export function AdtWorkspace({
-  patients, beds, wards, encounters, admissions, stays, facilityId,
+  patients, beds, wards, encounters, admissions, stays, facilityId, doctors,
 }: {
   patients: Patient[]; beds: Bed[]; wards: Ward[]; encounters: Encounter[];
-  admissions: Admission[]; stays: Stay[]; facilityId: string;
+  admissions: Admission[]; stays: Stay[]; facilityId: string; doctors:Doctor[];
 }) {
   const [open, setOpen] = useState(false);
   const available = beds.filter((bed) => bed.status === "available");
@@ -41,7 +43,7 @@ export function AdtWorkspace({
     </div>
     <section className="card table-wrap">
       <table className="data-table adt-table">
-        <thead><tr><th>Admission</th><th>Patient</th><th>Current location</th><th>Status</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Admission</th><th>Patient</th><th>Attending doctor</th><th>Current location</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody>
           {admissions.map((admission) => {
             const encounter = encounters.find((item) => item.id === admission.encounter_id);
@@ -50,23 +52,24 @@ export function AdtWorkspace({
             return <tr key={admission.id}>
               <td className="name-cell"><strong>{admission.admission_no}</strong><span>{new Date(admission.admitted_at).toLocaleString()}</span></td>
               <td>{patient ? `${patient.last_name}, ${patient.first_name} · ${patient.mrn}` : "Patient"}</td>
+              <td>{doctorLabel(doctors.find(doctor=>doctor.id===admission.attending_doctor_id))}</td>
               <td>{stay ? bedLabel(stay.bed_id) : "Discharged"}</td>
               <td><span className={`badge ${admission.status === "discharged" ? "blue" : "green"}`}>{admission.status}</span></td>
-              <td><AdmissionActions admission={admission} patient={patient} availableBeds={available} bedLabel={bedLabel}/></td>
+              <td><AdmissionActions admission={admission} patient={patient} availableBeds={available} bedLabel={bedLabel} doctors={doctors}/></td>
             </tr>;
           })}
-          {!admissions.length && <tr><td colSpan={5} className="empty-state">No admissions recorded.</td></tr>}
+          {!admissions.length && <tr><td colSpan={6} className="empty-state">No admissions recorded.</td></tr>}
         </tbody>
       </table>
     </section>
-    {open && <AdmissionDialog patients={patients} availableBeds={available} facilityId={facilityId} bedLabel={bedLabel} close={() => setOpen(false)}/>}
+    {open && <AdmissionDialog patients={patients} availableBeds={available} facilityId={facilityId} bedLabel={bedLabel} doctors={doctors} close={() => setOpen(false)}/>} 
   </>;
 }
 
 function AdmissionActions({
-  admission, patient, availableBeds, bedLabel,
+  admission, patient, availableBeds, bedLabel, doctors,
 }: {
-  admission: Admission; patient?: Patient; availableBeds: Bed[]; bedLabel: (bedId: string) => string;
+  admission: Admission; patient?: Patient; availableBeds: Bed[]; bedLabel: (bedId: string) => string; doctors:Doctor[];
 }) {
   const [transferOpen, setTransferOpen] = useState(false);
   const [dischargeOpen, setDischargeOpen] = useState(false);
@@ -82,7 +85,7 @@ function AdmissionActions({
       </>}
     </div>
     {transferOpen && <TransferDialog admissionId={admission.id} admissionNumber={admission.admission_no} patientName={patientName} availableBeds={availableBeds} bedLabel={bedLabel} close={() => setTransferOpen(false)}/>}
-    {dischargeOpen && <DischargeDialog admissionId={admission.id} admissionNumber={admission.admission_no} patientName={patientName} close={() => setDischargeOpen(false)} viewChart={() => setChartOpen(true)}/>}
+    {dischargeOpen && <DischargeDialog admissionId={admission.id} admissionNumber={admission.admission_no} patientName={patientName} doctors={doctors} defaultDoctorId={admission.attending_doctor_id||""} close={() => setDischargeOpen(false)} viewChart={() => setChartOpen(true)}/>} 
     {chartOpen && <PatientChartDialog admissionId={admission.id} close={() => setChartOpen(false)}/>}
   </>;
 }
@@ -114,9 +117,9 @@ function TransferDialog({
 }
 
 function DischargeDialog({
-  admissionId, admissionNumber, patientName, close, viewChart,
+  admissionId, admissionNumber, patientName, close, viewChart, doctors, defaultDoctorId,
 }: {
-  admissionId: string; admissionNumber: string; patientName: string; close: () => void; viewChart: () => void;
+  admissionId: string; admissionNumber: string; patientName: string; close: () => void; viewChart: () => void; doctors:Doctor[]; defaultDoctorId:string;
 }) {
   const [state, action, pending] = useActionState(dischargePatient, initialState);
   return <div className="modal-backdrop">
@@ -128,6 +131,7 @@ function DischargeDialog({
       </div>
       <form action={action} className="adt-dialog-form discharge-form">
         <input type="hidden" name="admission_id" value={admissionId}/>
+        <label className="wide">Discharging doctor<select required name="doctor_id" defaultValue={defaultDoctorId}><option value="" disabled>Select discharging doctor</option>{doctors.map(doctor=><option key={doctor.id} value={doctor.id}>{doctorLabel(doctor)} · {doctor.specialty}</option>)}</select></label>
         <label>Discharge disposition<select required name="disposition" defaultValue=""><option value="" disabled>Select outcome or destination</option><option>Home</option><option>Transferred to another facility</option><option>Home against medical advice</option><option>Expired</option><option>Other</option></select></label>
         <label>Condition at discharge<input required minLength={2} maxLength={250} name="condition" placeholder="Stable, improved, guarded, or other condition"/></label>
         <label className="wide">Final diagnosis<textarea required minLength={2} maxLength={2000} name="final_diagnosis" rows={5} placeholder="Enter the confirmed diagnosis or diagnoses at discharge"/></label>
@@ -179,6 +183,7 @@ function PatientChartDialog({ admissionId, close }: { admissionId: string; close
           <div><span>Admission</span><strong>{chart.admission.number}</strong></div><div><span>Status</span><strong>{chart.admission.status}</strong></div>
           <div><span>Birth date</span><strong>{chart.patient.birthDate || "Not recorded"}</strong></div><div><span>Sex at birth</span><strong>{chart.patient.sexAtBirth || "Not recorded"}</strong></div>
         </div>
+        <ChartSection title="Care team"><div className="chart-summary"><p><b>Admitting doctor:</b> {chart.careTeam.admittingDoctor}</p><p><b>Attending doctor:</b> {chart.careTeam.attendingDoctor}</p>{chart.dischargeSummary&&<p><b>Discharging doctor:</b> {chart.careTeam.dischargingDoctor}</p>}</div></ChartSection>
         <ChartSection title="Allergy warning">{chart.allergies.length ? <div className="chart-alerts">{chart.allergies.map((item, index) => <span key={index}>{item.substance}{item.reaction ? ` — ${item.reaction}` : ""}</span>)}</div> : <EmptyRecord text="No active allergies documented. Confirm with the patient."/>}</ChartSection>
         <ChartSection title="Latest vital signs">{chart.vitals.length ? <div className="chart-vitals">{chart.vitals.map((item, index) => <div key={index}><strong>{item.value} {item.unit}</strong><span>{item.code}</span></div>)}</div> : <EmptyRecord/>}</ChartSection>
         <ChartSection title="Diagnoses">{chart.diagnoses.length ? <ul>{chart.diagnoses.map((item, index) => <li key={index}><strong>{item.description}</strong><span>{item.type}</span></li>)}</ul> : <EmptyRecord/>}</ChartSection>
@@ -266,9 +271,9 @@ function AttachmentManagerDialog({
 }
 
 function AdmissionDialog({
-  patients, availableBeds, facilityId, bedLabel, close,
+  patients, availableBeds, facilityId, bedLabel, close, doctors,
 }: {
-  patients: Patient[]; availableBeds: Bed[]; facilityId: string; bedLabel: (bedId: string) => string; close: () => void;
+  patients: Patient[]; availableBeds: Bed[]; facilityId: string; bedLabel: (bedId: string) => string; close: () => void; doctors:Doctor[];
 }) {
   const [state, action, pending] = useActionState(admitPatient, initialState);
   return <div className="modal-backdrop">
@@ -278,6 +283,7 @@ function AdmissionDialog({
         <input type="hidden" name="facility_id" value={facilityId}/>
         <label className="wide">Patient<select required name="patient_id" defaultValue=""><option value="" disabled>Select patient</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.mrn} · {patient.last_name}, {patient.first_name}</option>)}</select></label>
         <label className="wide">Available bed<select required name="bed_id" defaultValue=""><option value="" disabled>Select ward and bed</option>{availableBeds.map((bed) => <option key={bed.id} value={bed.id}>{bedLabel(bed.id)}</option>)}</select></label>
+        <label className="wide">Admitting / attending doctor<select required name="doctor_id" defaultValue=""><option value="" disabled>Select doctor</option>{doctors.map(doctor=><option key={doctor.id} value={doctor.id}>{doctorLabel(doctor)} · {doctor.specialty}</option>)}</select></label>
         {state.message && <div className={state.ok ? "form-success wide" : "form-error wide"}>{state.message}</div>}
         <div className="form-actions wide"><button type="button" className="btn btn-secondary" onClick={close}>Cancel</button><button disabled={pending} className="btn btn-primary">{pending ? "Admitting…" : "Admit patient"}</button></div>
       </form>

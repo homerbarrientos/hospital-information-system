@@ -26,7 +26,7 @@ export default async function Clinical() {
   const facilityId = roles?.[0]?.facility_id;
   if (!facilityId) return <div className="form-error">No active facility assignment.</div>;
 
-  const [{ data: patients }, { data: allergies }, { data: encounters }] =
+  const [{ data: patients }, { data: allergies }, { data: encounters }, { data: doctorAssignments }] =
     await Promise.all([
       supabase
         .from("patients")
@@ -38,11 +38,12 @@ export default async function Clinical() {
         .eq("status", "active"),
       supabase
         .from("encounters")
-        .select("id,encounter_no,status,service_date,patient_id")
+        .select("id,encounter_no,status,service_date,patient_id,responsible_doctor_id")
         .eq("facility_id", facilityId)
         .eq("encounter_type", "OPD")
         .order("created_at", { ascending: false })
         .limit(50),
+      supabase.from("doctor_facility_assignments").select("doctor_id,doctors(id,first_name,last_name,suffix,specialty,status)").eq("facility_id",facilityId).eq("active",true),
     ]);
 
   const encounterIds = (encounters || []).map((encounter) => encounter.id);
@@ -122,6 +123,7 @@ export default async function Clinical() {
     });
   }
 
+  const doctors=(doctorAssignments||[]).flatMap((row)=>{const doctor=Array.isArray(row.doctors)?row.doctors[0]:row.doctors;return doctor&&doctor.status==="active"?[doctor]:[];});
   return (
     <>
       <PageHeading
@@ -135,6 +137,7 @@ export default async function Clinical() {
         encounters={encounters || []}
         consultationDetails={consultationDetails}
         facilityId={facilityId}
+        doctors={doctors}
       />
     </>
   );

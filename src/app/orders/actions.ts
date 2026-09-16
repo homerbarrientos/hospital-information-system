@@ -23,8 +23,9 @@ export async function createOrder(_: OrderState, form: FormData): Promise<OrderS
   if (!items) return initialError("Add 1 to 20 valid order items. Each item needs 2 to 250 characters.");
   if (text(form, "instructions").length > 2000) return initialError("Instructions cannot exceed 2000 characters.");
   const supabase = await createClient();
-  const { error } = await supabase.rpc("create_order", {
+  const { error } = await supabase.rpc("create_order_with_doctor", {
     target_encounter: text(form, "encounter_id"),
+    target_doctor: text(form, "doctor_id"),
     order_type: text(form, "order_type"),
     order_priority: text(form, "priority"),
     order_instructions: text(form, "instructions"),

@@ -27,7 +27,9 @@ type Encounter = {
   status: string;
   service_date: string;
   patient_id: string;
+  responsible_doctor_id: string | null;
 };
+type Doctor = { id:string; first_name:string; last_name:string; suffix:string|null; specialty:string };
 
 type ConsultationDetail = {
   encounter_id: string;
@@ -39,6 +41,7 @@ type ConsultationDetail = {
 };
 
 const initial: ClinicalState = { ok: false, message: "" };
+const doctorLabel=(doctor?:Doctor)=>doctor?`Dr. ${doctor.last_name}, ${doctor.first_name}${doctor.suffix?` ${doctor.suffix}`:""}`:"Not assigned";
 
 export function ClinicalWorkspace({
   patients,
@@ -46,12 +49,14 @@ export function ClinicalWorkspace({
   encounters,
   consultationDetails,
   facilityId,
+  doctors,
 }: {
   patients: Patient[];
   allergies: Allergy[];
   encounters: Encounter[];
   consultationDetails: ConsultationDetail[];
   facilityId: string;
+  doctors: Doctor[];
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Encounter | null>(null);
@@ -76,6 +81,7 @@ export function ClinicalWorkspace({
                 <th>Encounter</th>
                 <th>Patient</th>
                 <th>Date</th>
+                <th>Doctor</th>
                 <th>Allergy alert</th>
                 <th>Status / Action</th>
               </tr>
@@ -111,6 +117,7 @@ export function ClinicalWorkspace({
                         <span>{patient?.mrn}</span>
                       </td>
                       <td>{encounter.service_date}</td>
+                      <td>{doctorLabel(doctors.find((doctor)=>doctor.id===encounter.responsible_doctor_id))}</td>
                       <td>
                         {alerts.length ? (
                           <span className="allergy-alert">
@@ -141,7 +148,7 @@ export function ClinicalWorkspace({
                       </td>
                     </tr>
                     <tr className="consultation-detail-row">
-                      <td colSpan={5}>
+                      <td colSpan={6}>
                         <div className="consultation-summary-grid">
                           <ClinicalSummary
                             label="Chief complaint"
@@ -165,7 +172,7 @@ export function ClinicalWorkspace({
               })}
               {!encounters.length && (
                 <tr>
-                  <td colSpan={5} className="empty-state">
+                  <td colSpan={6} className="empty-state">
                     No consultations recorded yet.
                   </td>
                 </tr>
@@ -180,6 +187,7 @@ export function ClinicalWorkspace({
           encounter={selected}
           patient={patients.find((patient) => patient.id === selected.patient_id)}
           allergies={allergies}
+          providerName={doctorLabel(doctors.find((doctor)=>doctor.id===selected.responsible_doctor_id))}
           onClose={() => setSelected(null)}
         />
       )}
@@ -188,6 +196,7 @@ export function ClinicalWorkspace({
           patients={patients}
           allergies={allergies}
           facilityId={facilityId}
+          doctors={doctors}
           close={() => setOpen(false)}
         />
       )}
@@ -216,11 +225,13 @@ function ConsultationDialog({
   patients,
   allergies,
   facilityId,
+  doctors,
   close,
 }: {
   patients: Patient[];
   allergies: Allergy[];
   facilityId: string;
+  doctors: Doctor[];
   close: () => void;
 }) {
   const [state, action, pending] = useActionState(createConsultation, initial);
@@ -257,6 +268,7 @@ function ConsultationDialog({
               ))}
             </select>
           </label>
+          <label className="wide">Responsible doctor<select required name="doctor_id" defaultValue=""><option value="" disabled>Select attending or consulting doctor</option>{doctors.map((doctor)=><option key={doctor.id} value={doctor.id}>{doctorLabel(doctor)} · {doctor.specialty}</option>)}</select></label>
           {patientId && (
             <div className={active.length ? "allergy-panel wide" : "notice wide"}>
               {active.length ? (

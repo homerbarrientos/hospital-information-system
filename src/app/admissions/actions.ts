@@ -8,6 +8,7 @@ export type AdtState = { ok: boolean; message: string };
 export type PatientChart = {
   patient: { mrn: string; name: string; birthDate: string | null; sexAtBirth: string | null };
   admission: { number: string; admittedAt: string; dischargedAt: string | null; status: string; disposition: string | null };
+  careTeam: { attendingDoctor: string; admittingDoctor: string; dischargingDoctor: string };
   allergies: Array<{ substance: string; reaction: string | null; severity: string | null }>;
   vitals: Array<{ code: string; value: number; unit: string; observedAt: string }>;
   diagnoses: Array<{ description: string; type: string; createdAt: string }>;
@@ -47,10 +48,11 @@ async function call(name: string, args: Record<string, string>): Promise<AdtStat
 }
 
 export async function admitPatient(_: AdtState, form: FormData): Promise<AdtState> {
-  const result = await call("admit_patient", {
+  const result = await call("admit_patient_with_doctor", {
     target_facility: value(form, "facility_id"),
     target_patient: value(form, "patient_id"),
     target_bed: value(form, "bed_id"),
+    target_doctor: value(form, "doctor_id"),
   });
   return result.ok ? { ...result, message: "Patient admitted successfully." } : result;
 }
@@ -103,8 +105,9 @@ export async function dischargePatient(_: AdtState, form: FormData): Promise<Adt
     attachmentSize = attachment.size;
   }
 
-  const { error } = await supabase.rpc("complete_discharge", {
+  const { error } = await supabase.rpc("complete_discharge_with_doctor", {
     target_admission: admissionId,
+    target_doctor: value(form, "doctor_id"),
     discharge_disposition: value(form, "disposition"),
     final_diagnosis: value(form, "final_diagnosis"),
     condition_at_discharge: value(form, "condition"),
@@ -206,7 +209,7 @@ export async function loadPatientChart(admissionId: string): Promise<PatientChar
   const supabase = await createClient();
   const { data: admission, error: admissionError } = await supabase
     .from("admissions")
-    .select("id,encounter_id,admission_no,status,admitted_at,discharged_at,discharge_disposition")
+    .select("id,encounter_id,admission_no,status,admitted_at,discharged_at,discharge_disposition,admitting_doctor_id,attending_doctor_id")
     .eq("id", admissionId).single();
   if (admissionError || !admission) return { ok: false, message: admissionError?.message || "Admission not found." };
   const { data: admissionEncounter, error: encounterError } = await supabase
@@ -219,7 +222,7 @@ export async function loadPatientChart(admissionId: string): Promise<PatientChar
       supabase.from("encounters").select("id,encounter_no,service_date").eq("patient_id", admissionEncounter.patient_id).eq("facility_id", admissionEncounter.facility_id).order("service_date", { ascending: false }),
       supabase.from("allergies").select("substance,reaction,severity").eq("patient_id", admissionEncounter.patient_id).eq("status", "active").order("recorded_at", { ascending: false }),
       supabase.from("bed_stays").select("bed_id,started_at,ended_at,transfer_reason").eq("admission_id", admissionId).order("started_at"),
-      supabase.from("discharge_summaries").select("id,final_diagnosis,condition_at_discharge,instructions,follow_up_plan,discharge_medications").eq("admission_id", admissionId).maybeSingle(),
+      supabase.from("discharge_summaries").select("id,final_diagnosis,condition_at_discharge,instructions,follow_up_plan,discharge_medications,discharging_doctor_id").eq("admission_id", admissionId).maybeSingle(),
     ]);
   if (!patient) return { ok: false, message: "Patient record is unavailable." };
 
@@ -261,6 +264,9 @@ export async function loadPatientChart(admissionId: string): Promise<PatientChar
   const products = productsResponse.data || [];
   const wards = wardsResponse.data || [];
   const documents = documentsResponse.data || [];
+  const doctorIds=[admission.admitting_doctor_id,admission.attending_doctor_id,summary?.discharging_doctor_id].filter(Boolean) as string[];
+  const {data:doctorRows}=doctorIds.length?await supabase.from("doctors").select("id,first_name,last_name,suffix").in("id",doctorIds):{data:[]};
+  const doctorName=(id:string|null|undefined)=>{const doctor=(doctorRows||[]).find(item=>item.id===id);return doctor?`Dr. ${doctor.last_name}, ${doctor.first_name}${doctor.suffix?` ${doctor.suffix}`:""}`:"Not assigned";};
   const attachments = await Promise.all(documents.map(async (document) => {
     const { data } = await supabase.storage.from("discharge-documents").createSignedUrl(String(document.storage_path), 300);
     return {
@@ -282,6 +288,7 @@ export async function loadPatientChart(admissionId: string): Promise<PatientChar
   return { ok: true, chart: {
     patient: { mrn: patient.mrn, name: [patient.first_name, patient.middle_name, patient.last_name].filter(Boolean).join(" "), birthDate: patient.birth_date, sexAtBirth: patient.sex_at_birth },
     admission: { number: admission.admission_no, admittedAt: admission.admitted_at, dischargedAt: admission.discharged_at, status: admission.status, disposition: admission.discharge_disposition },
+    careTeam:{attendingDoctor:doctorName(admission.attending_doctor_id),admittingDoctor:doctorName(admission.admitting_doctor_id),dischargingDoctor:doctorName(summary?.discharging_doctor_id)},
     allergies: allergies || [],
     vitals: vitals.slice(0, 12).map((item) => ({ code: item.code, value: item.value, unit: item.unit, observedAt: item.observed_at })),
     diagnoses: diagnoses.map((item) => ({ description: item.description, type: item.diagnosis_type, createdAt: item.created_at })),
