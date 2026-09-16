@@ -3,7 +3,8 @@ import "./globals.css";
 import "./workflows.css";
 import "./clinical.css";
 import "./adt.css";
-import "./navigation.css";\nimport "./encounter-details.css";
+import "./navigation.css";
+import "./encounter-details.css";
 import{RootShell}from"@/components/root-shell";
 
 export const metadata: Metadata = {
