@@ -52,9 +52,11 @@ alter table public.discharge_summaries add column if not exists discharging_doct
 alter table public.doctors enable row level security;
 alter table public.doctor_facility_assignments enable row level security;
 
+drop policy if exists "doctor master read" on public.doctors;
 create policy "doctor master read" on public.doctors for select using (
   exists(select 1 from public.doctor_facility_assignments a where a.doctor_id=doctors.id and public.has_privilege('doctors.read',a.facility_id))
 );
+drop policy if exists "doctor assignments read" on public.doctor_facility_assignments;
 create policy "doctor assignments read" on public.doctor_facility_assignments for select using (
   public.has_privilege('doctors.read',facility_id)
 );
