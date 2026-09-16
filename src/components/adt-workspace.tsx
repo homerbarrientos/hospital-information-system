@@ -1,302 +1,204 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { ArrowRightLeft, DoorOpen, Plus, X } from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
+import { ArrowRightLeft, DoorOpen, Eye, FileUp, Plus, X } from "lucide-react";
 import {
   admitPatient,
   dischargePatient,
+  loadPatientChart,
   transferPatient,
   type AdtState,
+  type PatientChart,
 } from "@/app/admissions/actions";
 
 type Patient = { id: string; mrn: string; first_name: string; last_name: string };
 type Bed = { id: string; code: string; status: string; ward_id: string };
 type Ward = { id: string; name: string };
 type Encounter = { id: string; patient_id: string };
-type Admission = {
-  id: string;
-  encounter_id: string;
-  admission_no: string;
-  status: string;
-  admitted_at: string;
-};
+type Admission = { id: string; encounter_id: string; admission_no: string; status: string; admitted_at: string };
 type Stay = { admission_id: string; bed_id: string; ended_at: string | null };
-
 const initialState: AdtState = { ok: false, message: "" };
 
 export function AdtWorkspace({
-  patients,
-  beds,
-  wards,
-  encounters,
-  admissions,
-  stays,
-  facilityId,
+  patients, beds, wards, encounters, admissions, stays, facilityId,
 }: {
-  patients: Patient[];
-  beds: Bed[];
-  wards: Ward[];
-  encounters: Encounter[];
-  admissions: Admission[];
-  stays: Stay[];
-  facilityId: string;
+  patients: Patient[]; beds: Bed[]; wards: Ward[]; encounters: Encounter[];
+  admissions: Admission[]; stays: Stay[]; facilityId: string;
 }) {
   const [open, setOpen] = useState(false);
   const available = beds.filter((bed) => bed.status === "available");
   const bedLabel = (bedId: string) => {
     const bed = beds.find((item) => item.id === bedId);
-    return bed
-      ? `${wards.find((ward) => ward.id === bed.ward_id)?.name || "Ward"} · ${bed.code}`
-      : "—";
+    return bed ? `${wards.find((ward) => ward.id === bed.ward_id)?.name || "Ward"} · ${bed.code}` : "—";
   };
 
-  return (
-    <>
-      <div className="toolbar">
-        <button className="btn btn-primary" onClick={() => setOpen(true)}>
-          <Plus size={15} />
-          New admission
-        </button>
-      </div>
-      <section className="card table-wrap">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Admission</th>
-              <th>Patient</th>
-              <th>Current location</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {admissions.map((admission) => {
-              const encounter = encounters.find(
-                (item) => item.id === admission.encounter_id,
-              );
-              const patient = patients.find(
-                (item) => item.id === encounter?.patient_id,
-              );
-              const stay = stays.find(
-                (item) => item.admission_id === admission.id && !item.ended_at,
-              );
-              return (
-                <tr key={admission.id}>
-                  <td className="name-cell">
-                    <strong>{admission.admission_no}</strong>
-                    <span>{new Date(admission.admitted_at).toLocaleString()}</span>
-                  </td>
-                  <td>
-                    {patient
-                      ? `${patient.last_name}, ${patient.first_name} · ${patient.mrn}`
-                      : "Patient"}
-                  </td>
-                  <td>{stay ? bedLabel(stay.bed_id) : "Discharged"}</td>
-                  <td>
-                    <span
-                      className={`badge ${admission.status === "discharged" ? "blue" : "green"}`}
-                    >
-                      {admission.status}
-                    </span>
-                  </td>
-                  <td>
-                    {admission.status !== "discharged" && (
-                      <AdmissionActions
-                        admissionId={admission.id}
-                        availableBeds={available}
-                        bedLabel={bedLabel}
-                      />
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {!admissions.length && (
-              <tr>
-                <td colSpan={5} className="empty-state">
-                  No admissions recorded.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
-      {open && (
-        <AdmissionDialog
-          patients={patients}
-          availableBeds={available}
-          facilityId={facilityId}
-          bedLabel={bedLabel}
-          close={() => setOpen(false)}
-        />
-      )}
-    </>
-  );
+  return <>
+    <div className="toolbar">
+      <button className="btn btn-primary" onClick={() => setOpen(true)}><Plus size={15}/>New admission</button>
+    </div>
+    <section className="card table-wrap">
+      <table className="data-table adt-table">
+        <thead><tr><th>Admission</th><th>Patient</th><th>Current location</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          {admissions.map((admission) => {
+            const encounter = encounters.find((item) => item.id === admission.encounter_id);
+            const patient = patients.find((item) => item.id === encounter?.patient_id);
+            const stay = stays.find((item) => item.admission_id === admission.id && !item.ended_at);
+            return <tr key={admission.id}>
+              <td className="name-cell"><strong>{admission.admission_no}</strong><span>{new Date(admission.admitted_at).toLocaleString()}</span></td>
+              <td>{patient ? `${patient.last_name}, ${patient.first_name} · ${patient.mrn}` : "Patient"}</td>
+              <td>{stay ? bedLabel(stay.bed_id) : "Discharged"}</td>
+              <td><span className={`badge ${admission.status === "discharged" ? "blue" : "green"}`}>{admission.status}</span></td>
+              <td><AdmissionActions admission={admission} patient={patient} availableBeds={available} bedLabel={bedLabel}/></td>
+            </tr>;
+          })}
+          {!admissions.length && <tr><td colSpan={5} className="empty-state">No admissions recorded.</td></tr>}
+        </tbody>
+      </table>
+    </section>
+    {open && <AdmissionDialog patients={patients} availableBeds={available} facilityId={facilityId} bedLabel={bedLabel} close={() => setOpen(false)}/>}
+  </>;
 }
 
 function AdmissionActions({
-  admissionId,
-  availableBeds,
-  bedLabel,
+  admission, patient, availableBeds, bedLabel,
 }: {
-  admissionId: string;
-  availableBeds: Bed[];
-  bedLabel: (bedId: string) => string;
+  admission: Admission; patient?: Patient; availableBeds: Bed[]; bedLabel: (bedId: string) => string;
 }) {
-  const [transferState, transferAction, transferPending] = useActionState(
-    transferPatient,
-    initialState,
-  );
-  const [dischargeState, dischargeAction, dischargePending] = useActionState(
-    dischargePatient,
-    initialState,
-  );
-  const feedback = transferState.message ? transferState : dischargeState;
-
-  return (
-    <div className="adt-actions">
-      <section className="adt-action-panel transfer-panel">
-        <div className="adt-action-label">
-          <ArrowRightLeft size={18} />
-          <span>
-            <strong>Transfer patient</strong>
-            <small>Move to another bed</small>
-          </span>
-        </div>
-        <form action={transferAction}>
-          <input type="hidden" name="admission_id" value={admissionId} />
-          <label>
-            Destination bed
-            <select required name="bed_id" defaultValue="">
-              <option value="" disabled>
-                Select available bed
-              </option>
-              {availableBeds.map((bed) => (
-                <option key={bed.id} value={bed.id}>
-                  {bedLabel(bed.id)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Transfer reason
-            <textarea
-              required
-              name="reason"
-              rows={2}
-              placeholder="Explain why the patient is being transferred"
-            />
-          </label>
-          <button disabled={transferPending} className="btn adt-transfer-btn">
-            <ArrowRightLeft size={15} />
-            {transferPending ? "Transferring…" : "Transfer patient"}
-          </button>
-        </form>
-      </section>
-      <section className="adt-action-panel discharge-panel">
-        <div className="adt-action-label">
-          <DoorOpen size={18} />
-          <span>
-            <strong>Discharge patient</strong>
-            <small>End this admission</small>
-          </span>
-        </div>
-        <form action={dischargeAction}>
-          <input type="hidden" name="admission_id" value={admissionId} />
-          <label className="disposition-field">
-            Discharge disposition
-            <textarea
-              required
-              name="disposition"
-              rows={2}
-              placeholder="Enter the discharge outcome or destination"
-            />
-          </label>
-          <button disabled={dischargePending} className="btn adt-discharge-btn">
-            <DoorOpen size={15} />
-            {dischargePending ? "Discharging…" : "Discharge patient"}
-          </button>
-        </form>
-      </section>
-      {feedback.message && (
-        <div className={feedback.ok ? "adt-feedback success" : "adt-feedback error"}>
-          {feedback.message}
-        </div>
-      )}
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [dischargeOpen, setDischargeOpen] = useState(false);
+  const [chartOpen, setChartOpen] = useState(false);
+  const active = admission.status !== "discharged";
+  const patientName = patient ? `${patient.last_name}, ${patient.first_name}` : "Patient";
+  return <>
+    <div className="adt-row-actions">
+      <button className="btn adt-view-btn" onClick={() => setChartOpen(true)}><Eye size={15}/>View chart</button>
+      {active && <>
+        <button className="btn adt-transfer-btn" onClick={() => setTransferOpen(true)}><ArrowRightLeft size={15}/>Transfer</button>
+        <button className="btn adt-discharge-btn" onClick={() => setDischargeOpen(true)}><DoorOpen size={15}/>Prepare discharge</button>
+      </>}
     </div>
-  );
+    {transferOpen && <TransferDialog admissionId={admission.id} admissionNumber={admission.admission_no} patientName={patientName} availableBeds={availableBeds} bedLabel={bedLabel} close={() => setTransferOpen(false)}/>}
+    {dischargeOpen && <DischargeDialog admissionId={admission.id} admissionNumber={admission.admission_no} patientName={patientName} close={() => setDischargeOpen(false)} viewChart={() => setChartOpen(true)}/>}
+    {chartOpen && <PatientChartDialog admissionId={admission.id} close={() => setChartOpen(false)}/>}
+  </>;
+}
+
+function DialogHead({ eyebrow, title, close }: { eyebrow: string; title: string; close: () => void }) {
+  return <div className="modal-head"><div><p className="eyebrow">{eyebrow}</p><h3>{title}</h3></div><button type="button" className="icon-btn" onClick={close} aria-label="Close"><X size={17}/></button></div>;
+}
+
+function TransferDialog({
+  admissionId, admissionNumber, patientName, availableBeds, bedLabel, close,
+}: {
+  admissionId: string; admissionNumber: string; patientName: string; availableBeds: Bed[];
+  bedLabel: (bedId: string) => string; close: () => void;
+}) {
+  const [state, action, pending] = useActionState(transferPatient, initialState);
+  return <div className="modal-backdrop">
+    <section className="modal adt-modal" role="dialog" aria-modal="true">
+      <DialogHead eyebrow="Patient transfer" title="Transfer to another bed" close={close}/>
+      <div className="adt-patient-strip"><strong>{patientName}</strong><span>{admissionNumber}</span></div>
+      <form action={action} className="adt-dialog-form">
+        <input type="hidden" name="admission_id" value={admissionId}/>
+        <label>Destination bed<select required name="bed_id" defaultValue=""><option value="" disabled>Select an available bed</option>{availableBeds.map((bed) => <option key={bed.id} value={bed.id}>{bedLabel(bed.id)}</option>)}</select></label>
+        <label>Transfer reason<textarea required name="reason" rows={5} placeholder="Document the clinical or operational reason for this transfer"/></label>
+        {state.message && <div className={state.ok ? "form-success" : "form-error"}>{state.message}</div>}
+        <div className="form-actions"><button type="button" className="btn btn-secondary" onClick={close}>Cancel</button><button disabled={pending || state.ok} className="btn adt-transfer-btn"><ArrowRightLeft size={15}/>{pending ? "Transferring…" : state.ok ? "Transferred" : "Confirm transfer"}</button></div>
+      </form>
+    </section>
+  </div>;
+}
+
+function DischargeDialog({
+  admissionId, admissionNumber, patientName, close, viewChart,
+}: {
+  admissionId: string; admissionNumber: string; patientName: string; close: () => void; viewChart: () => void;
+}) {
+  const [state, action, pending] = useActionState(dischargePatient, initialState);
+  return <div className="modal-backdrop">
+    <section className="modal adt-modal discharge-modal" role="dialog" aria-modal="true">
+      <DialogHead eyebrow="Discharge planning" title="Prepare patient discharge" close={close}/>
+      <div className="adt-patient-strip">
+        <span><strong>{patientName}</strong><small>{admissionNumber}</small></span>
+        <button type="button" className="btn adt-view-btn" onClick={viewChart}><Eye size={15}/>View patient chart</button>
+      </div>
+      <form action={action} className="adt-dialog-form discharge-form">
+        <input type="hidden" name="admission_id" value={admissionId}/>
+        <label>Discharge disposition<select required name="disposition" defaultValue=""><option value="" disabled>Select outcome or destination</option><option>Home</option><option>Transferred to another facility</option><option>Home against medical advice</option><option>Expired</option><option>Other</option></select></label>
+        <label>Condition at discharge<input required name="condition" placeholder="Stable, improved, guarded, or other condition"/></label>
+        <label className="wide">Final diagnosis<textarea required name="final_diagnosis" rows={3} placeholder="Enter the confirmed diagnosis or diagnoses at discharge"/></label>
+        <label className="wide">Discharge instructions<textarea required name="instructions" rows={5} placeholder="Care instructions, restrictions, warning signs, and when to seek urgent care"/></label>
+        <label>Follow-up or referral<textarea name="follow_up" rows={4} placeholder="Clinic, provider, date, or referral details"/></label>
+        <label>Discharge medications<textarea name="medications" rows={4} placeholder="Medicine, dose, route, frequency, and duration"/></label>
+        <label className="wide attachment-field"><span><FileUp size={16}/>Optional supporting document</span><input type="file" name="attachment" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"/><small>PDF, JPG, or PNG. Maximum 3 MB. Do not upload a duplicate of the patient chart.</small></label>
+        {state.message && <div className={state.ok ? "form-success wide" : "form-error wide"}>{state.message}</div>}
+        <div className="form-actions wide"><button type="button" className="btn btn-secondary" onClick={close}>{state.ok ? "Close" : "Cancel"}</button>{!state.ok && <button disabled={pending} className="btn adt-discharge-btn"><DoorOpen size={15}/>{pending ? "Completing discharge…" : "Complete discharge"}</button>}</div>
+      </form>
+    </section>
+  </div>;
+}
+
+function ChartSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section className="chart-section"><h4>{title}</h4>{children}</section>;
+}
+
+function EmptyRecord({ text = "No records documented." }: { text?: string }) {
+  return <p className="chart-empty">{text}</p>;
+}
+
+function PatientChartDialog({ admissionId, close }: { admissionId: string; close: () => void }) {
+  const [chart, setChart] = useState<PatientChart | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    loadPatientChart(admissionId).then((result) => {
+      if (!active) return;
+      if (result.ok) setChart(result.chart); else setError(result.message);
+    });
+    return () => { active = false; };
+  }, [admissionId]);
+  return <div className="modal-backdrop chart-backdrop">
+    <section className="modal chart-modal" role="dialog" aria-modal="true">
+      <DialogHead eyebrow="Read-only clinical record" title={chart ? `${chart.patient.name} · ${chart.patient.mrn}` : "Patient chart"} close={close}/>
+      {!chart && !error && <div className="chart-loading">Loading the secure patient chart…</div>}
+      {error && <div className="form-error chart-error">{error}</div>}
+      {chart && <div className="chart-body">
+        <div className="chart-identity-grid">
+          <div><span>Admission</span><strong>{chart.admission.number}</strong></div><div><span>Status</span><strong>{chart.admission.status}</strong></div>
+          <div><span>Birth date</span><strong>{chart.patient.birthDate || "Not recorded"}</strong></div><div><span>Sex at birth</span><strong>{chart.patient.sexAtBirth || "Not recorded"}</strong></div>
+        </div>
+        <ChartSection title="Allergy warning">{chart.allergies.length ? <div className="chart-alerts">{chart.allergies.map((item, index) => <span key={index}>{item.substance}{item.reaction ? ` — ${item.reaction}` : ""}</span>)}</div> : <EmptyRecord text="No active allergies documented. Confirm with the patient."/>}</ChartSection>
+        <ChartSection title="Latest vital signs">{chart.vitals.length ? <div className="chart-vitals">{chart.vitals.map((item, index) => <div key={index}><strong>{item.value} {item.unit}</strong><span>{item.code}</span></div>)}</div> : <EmptyRecord/>}</ChartSection>
+        <ChartSection title="Diagnoses">{chart.diagnoses.length ? <ul>{chart.diagnoses.map((item, index) => <li key={index}><strong>{item.description}</strong><span>{item.type}</span></li>)}</ul> : <EmptyRecord/>}</ChartSection>
+        <ChartSection title="Clinical notes">{chart.notes.length ? chart.notes.map((note, index) => <article className="chart-note" key={index}><header><strong>{note.encounterNumber}</strong><span>{note.serviceDate}</span></header><p><b>Chief complaint:</b> {note.chiefComplaint}</p><p><b>Clinical / SOAP note:</b> {note.soapNote}</p></article>) : <EmptyRecord/>}</ChartSection>
+        <div className="chart-two-column">
+          <ChartSection title="Orders and results">{chart.orders.length ? <ul>{chart.orders.map((order, index) => <li key={index}><strong>{order.number} · {order.type}</strong><span>{order.status}</span><p>{order.items.join(", ") || "No items"}{order.results.length ? ` — Results: ${order.results.join(", ")}` : ""}</p></li>)}</ul> : <EmptyRecord/>}</ChartSection>
+          <ChartSection title="Medications">{chart.medications.length ? <ul>{chart.medications.map((medication, index) => <li key={index}><strong>{medication.number}</strong><span>{medication.status}</span><p>{medication.items.join("; ") || "No medicine items"}</p></li>)}</ul> : <EmptyRecord/>}</ChartSection>
+        </div>
+        <ChartSection title="Bed movement history">{chart.movements.length ? <ul>{chart.movements.map((movement, index) => <li key={index}><strong>{movement.location}</strong><span>{new Date(movement.startedAt).toLocaleString()} to {movement.endedAt ? new Date(movement.endedAt).toLocaleString() : "present"}</span>{movement.reason && <p>{movement.reason}</p>}</li>)}</ul> : <EmptyRecord/>}</ChartSection>
+        {chart.dischargeSummary && <ChartSection title="Discharge summary"><div className="chart-summary"><p><b>Final diagnosis:</b> {chart.dischargeSummary.finalDiagnosis}</p><p><b>Condition:</b> {chart.dischargeSummary.condition}</p><p><b>Instructions:</b> {chart.dischargeSummary.instructions}</p><p><b>Follow-up:</b> {chart.dischargeSummary.followUp || "Not recorded"}</p><p><b>Medications:</b> {chart.dischargeSummary.medications || "Not recorded"}</p>{chart.attachments.map((file) => <a key={file.url} href={file.url} target="_blank" rel="noreferrer">{file.name}</a>)}</div></ChartSection>}
+      </div>}
+    </section>
+  </div>;
 }
 
 function AdmissionDialog({
-  patients,
-  availableBeds,
-  facilityId,
-  bedLabel,
-  close,
+  patients, availableBeds, facilityId, bedLabel, close,
 }: {
-  patients: Patient[];
-  availableBeds: Bed[];
-  facilityId: string;
-  bedLabel: (bedId: string) => string;
-  close: () => void;
+  patients: Patient[]; availableBeds: Bed[]; facilityId: string; bedLabel: (bedId: string) => string; close: () => void;
 }) {
   const [state, action, pending] = useActionState(admitPatient, initialState);
-
-  return (
-    <div className="modal-backdrop">
-      <section className="modal" role="dialog" aria-modal="true">
-        <div className="modal-head">
-          <div>
-            <p className="eyebrow">Patient movement</p>
-            <h3>New admission</h3>
-          </div>
-          <button className="icon-btn" onClick={close} aria-label="Close">
-            <X size={17} />
-          </button>
-        </div>
-        <form action={action} className="patient-form">
-          <input type="hidden" name="facility_id" value={facilityId} />
-          <label className="wide">
-            Patient
-            <select required name="patient_id" defaultValue="">
-              <option value="" disabled>
-                Select patient
-              </option>
-              {patients.map((patient) => (
-                <option key={patient.id} value={patient.id}>
-                  {patient.mrn} · {patient.last_name}, {patient.first_name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="wide">
-            Available bed
-            <select required name="bed_id" defaultValue="">
-              <option value="" disabled>
-                Select ward and bed
-              </option>
-              {availableBeds.map((bed) => (
-                <option key={bed.id} value={bed.id}>
-                  {bedLabel(bed.id)}
-                </option>
-              ))}
-            </select>
-          </label>
-          {state.message && (
-            <div className={state.ok ? "form-success wide" : "form-error wide"}>
-              {state.message}
-            </div>
-          )}
-          <div className="form-actions wide">
-            <button type="button" className="btn btn-secondary" onClick={close}>
-              Cancel
-            </button>
-            <button disabled={pending} className="btn btn-primary">
-              {pending ? "Admitting…" : "Admit patient"}
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
-  );
+  return <div className="modal-backdrop">
+    <section className="modal" role="dialog" aria-modal="true">
+      <DialogHead eyebrow="Patient movement" title="New admission" close={close}/>
+      <form action={action} className="patient-form">
+        <input type="hidden" name="facility_id" value={facilityId}/>
+        <label className="wide">Patient<select required name="patient_id" defaultValue=""><option value="" disabled>Select patient</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.mrn} · {patient.last_name}, {patient.first_name}</option>)}</select></label>
+        <label className="wide">Available bed<select required name="bed_id" defaultValue=""><option value="" disabled>Select ward and bed</option>{availableBeds.map((bed) => <option key={bed.id} value={bed.id}>{bedLabel(bed.id)}</option>)}</select></label>
+        {state.message && <div className={state.ok ? "form-success wide" : "form-error wide"}>{state.message}</div>}
+        <div className="form-actions wide"><button type="button" className="btn btn-secondary" onClick={close}>Cancel</button><button disabled={pending} className="btn btn-primary">{pending ? "Admitting…" : "Admit patient"}</button></div>
+      </form>
+    </section>
+  </div>;
 }
