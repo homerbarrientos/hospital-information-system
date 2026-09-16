@@ -155,32 +155,69 @@ function AdmissionActions({
 
   return (
     <div className="adt-actions">
-      <form action={transferAction}>
-        <input type="hidden" name="admission_id" value={admissionId} />
-        <select required name="bed_id" defaultValue="">
-          <option value="" disabled>
-            Transfer bed
-          </option>
-          {availableBeds.map((bed) => (
-            <option key={bed.id} value={bed.id}>
-              {bedLabel(bed.id)}
-            </option>
-          ))}
-        </select>
-        <input required name="reason" placeholder="Transfer reason" />
-        <button disabled={transferPending} className="btn btn-secondary">
-          <ArrowRightLeft size={13} />
-          {transferPending ? "Transferring…" : "Transfer"}
-        </button>
-      </form>
-      <form action={dischargeAction}>
-        <input type="hidden" name="admission_id" value={admissionId} />
-        <input required name="disposition" placeholder="Discharge disposition" />
-        <button disabled={dischargePending} className="btn btn-secondary">
-          <DoorOpen size={13} />
-          {dischargePending ? "Discharging…" : "Discharge"}
-        </button>
-      </form>
+      <section className="adt-action-panel transfer-panel">
+        <div className="adt-action-label">
+          <ArrowRightLeft size={18} />
+          <span>
+            <strong>Transfer patient</strong>
+            <small>Move to another bed</small>
+          </span>
+        </div>
+        <form action={transferAction}>
+          <input type="hidden" name="admission_id" value={admissionId} />
+          <label>
+            Destination bed
+            <select required name="bed_id" defaultValue="">
+              <option value="" disabled>
+                Select available bed
+              </option>
+              {availableBeds.map((bed) => (
+                <option key={bed.id} value={bed.id}>
+                  {bedLabel(bed.id)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Transfer reason
+            <textarea
+              required
+              name="reason"
+              rows={2}
+              placeholder="Explain why the patient is being transferred"
+            />
+          </label>
+          <button disabled={transferPending} className="btn adt-transfer-btn">
+            <ArrowRightLeft size={15} />
+            {transferPending ? "Transferring…" : "Transfer patient"}
+          </button>
+        </form>
+      </section>
+      <section className="adt-action-panel discharge-panel">
+        <div className="adt-action-label">
+          <DoorOpen size={18} />
+          <span>
+            <strong>Discharge patient</strong>
+            <small>End this admission</small>
+          </span>
+        </div>
+        <form action={dischargeAction}>
+          <input type="hidden" name="admission_id" value={admissionId} />
+          <label className="disposition-field">
+            Discharge disposition
+            <textarea
+              required
+              name="disposition"
+              rows={2}
+              placeholder="Enter the discharge outcome or destination"
+            />
+          </label>
+          <button disabled={dischargePending} className="btn adt-discharge-btn">
+            <DoorOpen size={15} />
+            {dischargePending ? "Discharging…" : "Discharge patient"}
+          </button>
+        </form>
+      </section>
       {feedback.message && (
         <div className={feedback.ok ? "adt-feedback success" : "adt-feedback error"}>
           {feedback.message}

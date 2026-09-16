@@ -1,1 +1,197 @@
-.adt-actions{display:grid;gap:6px}.adt-actions form{display:flex;gap:5px;align-items:center}.adt-actions input,.adt-actions select{height:34px;min-width:105px;border:1px solid var(--line);border-radius:7px;padding:0 7px;background:white}.adt-actions .btn{min-height:34px;padding:0 9px}.adt-feedback{max-width:520px;padding:7px 9px;border-radius:7px;font-size:10px;white-space:normal}.adt-feedback.success{background:#e5f6f3;color:#07675f;border:1px solid #b9e0da}.adt-feedback.error{background:#fde9eb;color:#972b37;border:1px solid #f3c0c5}@media(max-width:900px){.adt-actions form{min-width:430px}}
+.adt-actions {
+  display: grid;
+  gap: 10px;
+  min-width: 660px;
+}
+
+.adt-action-panel {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.transfer-panel {
+  background: #f0faf8;
+  border-color: #b9dfda;
+}
+
+.discharge-panel {
+  background: #fff6f6;
+  border-color: #efc2c7;
+}
+
+.adt-action-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.transfer-panel .adt-action-label {
+  color: #076d66;
+  background: #ddf3ef;
+}
+
+.discharge-panel .adt-action-label {
+  color: #a22f3a;
+  background: #fde8ea;
+}
+
+.adt-action-label strong,
+.adt-action-label small {
+  display: block;
+}
+
+.adt-action-label strong {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.adt-action-label small {
+  margin-top: 3px;
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+.adt-action-panel form {
+  display: grid;
+  grid-template-columns: minmax(155px, 0.8fr) minmax(230px, 1.2fr) 150px;
+  gap: 9px;
+  align-items: end;
+}
+
+.discharge-panel form {
+  grid-template-columns: minmax(394px, 2fr) 150px;
+}
+
+.adt-action-panel label {
+  display: grid;
+  gap: 5px;
+  color: #526879;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.adt-action-panel select,
+.adt-action-panel textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #abc0cc;
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.adt-action-panel select {
+  height: 58px;
+  padding: 0 10px;
+}
+
+.adt-action-panel textarea {
+  min-height: 58px;
+  padding: 9px 10px;
+  line-height: 1.35;
+  resize: vertical;
+}
+
+.adt-action-panel textarea::placeholder {
+  color: #7a8e9d;
+}
+
+.adt-action-panel .btn {
+  width: 150px;
+  min-height: 58px;
+  padding: 8px 12px;
+  font-size: 11px;
+}
+
+.adt-transfer-btn {
+  border: 1px solid #087b73;
+  background: var(--teal);
+  color: white;
+  box-shadow: 0 4px 12px #07857c2b;
+}
+
+.adt-transfer-btn:hover {
+  background: var(--teal-dark);
+}
+
+.adt-discharge-btn {
+  border: 1px solid #c13d4a;
+  background: #c13d4a;
+  color: white;
+  box-shadow: 0 4px 12px #c13d4a24;
+}
+
+.adt-discharge-btn:hover {
+  background: #a52f3a;
+}
+
+.adt-feedback {
+  max-width: 100%;
+  padding: 9px 11px;
+  border-radius: 7px;
+  font-size: 10px;
+  white-space: normal;
+}
+
+.adt-feedback.success {
+  border: 1px solid #b9e0da;
+  background: #e5f6f3;
+  color: #07675f;
+}
+
+.adt-feedback.error {
+  border: 1px solid #f3c0c5;
+  background: #fde9eb;
+  color: #972b37;
+}
+
+@media (max-width: 1100px) {
+  .adt-actions {
+    min-width: 560px;
+  }
+
+  .adt-action-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .adt-action-panel form,
+  .discharge-panel form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .adt-action-panel .btn {
+    width: 100%;
+  }
+
+  .transfer-panel .btn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .adt-actions {
+    min-width: 430px;
+  }
+
+  .adt-action-panel form,
+  .discharge-panel form {
+    grid-template-columns: 1fr;
+  }
+
+  .transfer-panel .btn {
+    grid-column: auto;
+  }
+}
