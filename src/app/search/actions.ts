@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-export type PickerKind = "patient" | "doctor" | "encounter";
+export type PickerKind = "patient" | "doctor" | "encounter" | "service";
 export type PickerRecord = { value: string; label: string; meta: string; type?: string; status?: string };
 export type PickerResult = { records: PickerRecord[]; total: number; error: string };
 const PAGE_SIZE = 20;
@@ -35,6 +35,14 @@ export async function searchPickerRecords(kind: PickerKind, query: string, page:
     if (term) request = request.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,specialty.ilike.%${term}%`);
     const { data, count, error } = await request;
     return { records: (data || []).map(row => ({ value: row.id, label: `Dr. ${row.last_name}, ${row.first_name}${row.suffix ? ` ${row.suffix}` : ""}`, meta: row.specialty })), total: count || 0, error: error?.message || "" };
+  }
+
+  if (kind === "service") {
+    const { data: facility } = await supabase.from("facilities").select("organization_id").eq("id",facilityId).single();
+    let request = supabase.from("service_catalog").select("id,code,name,category,billable",{count:"exact"}).eq("organization_id",facility?.organization_id).eq("status","active").order("name").range(from,to);
+    if(term)request=request.or(`code.ilike.%${term}%,name.ilike.%${term}%,category.ilike.%${term}%`);
+    const{data,count,error}=await request;
+    return{records:(data||[]).map(row=>({value:row.id,label:row.name,meta:`${row.code} · ${row.category} · ${row.billable?"Billable":"Non-billable"}`,type:row.category})),total:count||0,error:error?.message||""};
   }
 
   let patientIds: string[] = [];

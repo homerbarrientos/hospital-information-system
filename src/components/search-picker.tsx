@@ -6,9 +6,9 @@ import { searchPickerRecords, type PickerKind, type PickerRecord } from "@/app/s
 
 const PAGE_SIZE = 20;
 
-export function SearchPicker({ name, label, title, placeholder, searchPlaceholder, kind, defaultValue = "", initialOption, value, onChange, required = false, help }: {
+export function SearchPicker({ name, label, title, placeholder, searchPlaceholder, kind, defaultValue = "", initialOption, value, onChange, onSelect, required = false, help }: {
   name: string; label: string; title: string; placeholder: string; searchPlaceholder: string; kind: PickerKind;
-  defaultValue?: string; initialOption?: PickerRecord; value?: string; onChange?: (value: string) => void; required?: boolean; help?: string;
+  defaultValue?: string; initialOption?: PickerRecord; value?: string; onChange?: (value: string) => void; onSelect?: (record:PickerRecord)=>void; required?: boolean; help?: string;
 }) {
   const [internalValue, setInternalValue] = useState(defaultValue);
   const selectedValue = value ?? internalValue;
@@ -41,7 +41,7 @@ export function SearchPicker({ name, label, title, placeholder, searchPlaceholde
   const confirm = () => {
     if (!draft) return;
     if (value === undefined) setInternalValue(draft.value);
-    setSelected(draft); onChange?.(draft.value); setOpen(false);
+    setSelected(draft); onChange?.(draft.value); onSelect?.(draft); setOpen(false);
   };
 
   return <>

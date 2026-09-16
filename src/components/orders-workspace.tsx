@@ -17,9 +17,9 @@ type Encounter = { id: string; encounter_no: string; patient_id: string; status:
 type Order = { id: string; encounter_id: string; order_no: string; order_type: string; priority: string; status: string; ordered_at: string; instructions: string | null; version: number; cancellation_reason: string | null; ordering_doctor_id:string|null };
 type Doctor={id:string;first_name:string;last_name:string;suffix:string|null;specialty:string};
 type ReferenceOption={code:string;label:string;reference_groups:{code:string}|Array<{code:string}>};
-type Item = { id: string; order_id: string; description: string; status: string; charge_on: string };
+type Item = { id: string; order_id: string; service_id: string | null; description: string; status: string; charge_on: string };
 type Result = { id: string; order_item_id: string; result_text: string | null; status: string; entered_at: string; validated_at: string | null; correction_reason: string | null };
-type DraftItem = { description: string; charge_on: string };
+type DraftItem = { service_id: string; description: string; charge_on: string };
 const initial: OrderState = { ok: false, message: "" };
 const doctorLabel=(doctor?:Doctor)=>doctor?`Dr. ${doctor.last_name}, ${doctor.first_name}${doctor.suffix?` ${doctor.suffix}`:""}`:"Not assigned";
 const optionsFor=(options:ReferenceOption[],group:string)=>options.filter(option=>{const relation=Array.isArray(option.reference_groups)?option.reference_groups[0]:option.reference_groups;return relation?.code===group;});
@@ -71,7 +71,7 @@ function OrderFormDialog({ mode, order, savedItems, close, referenceOptions }: {
   mode: "create" | "edit"; order?: Order; savedItems?: Item[]; close: () => void; referenceOptions:ReferenceOption[];
 }) {
   const [state, action, pending] = useActionState(mode === "create" ? createOrder : amendOrder, initial);
-  const [draftItems, setDraftItems] = useState<DraftItem[]>(() => savedItems?.map((item) => ({ description: item.description, charge_on: item.charge_on })) || [{ description: "", charge_on: "none" }]);
+  const [draftItems, setDraftItems] = useState<DraftItem[]>(() => savedItems?.map((item) => ({ service_id:item.service_id||"",description: item.description, charge_on: item.charge_on })) || [{ service_id:"",description: "", charge_on: "none" }]);
   const updateItem = (index: number, key: keyof DraftItem, next: string) => setDraftItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: next } : item));
   return <div className="modal-backdrop orders-backdrop"><section className="modal order-modal" role="dialog" aria-modal="true">
     <ModalHead title={mode === "create" ? "Create clinical order" : `Modify ${order?.order_no}`} close={close}/>
@@ -85,11 +85,11 @@ function OrderFormDialog({ mode, order, savedItems, close, referenceOptions }: {
       <label className="wide">Clinical instructions<textarea maxLength={2000} name="instructions" rows={5} defaultValue={order?.instructions || ""} placeholder="Preparation, specimen, clinical indication, or special instructions"/></label>
       <fieldset className="order-item-builder wide"><legend>Requested services or tests</legend>
         {draftItems.map((item, index) => <div className="order-item-row" key={index}>
-          <label>Item {index + 1}<input required minLength={2} maxLength={250} value={item.description} onChange={(event) => updateItem(index, "description", event.target.value)} placeholder="Example: Complete blood count"/></label>
+          <div><SearchPicker kind="service" name={`service_${index}`} label={`Item ${index+1}`} title="Select service or test" placeholder="No service selected" searchPlaceholder="Search service code, name, or category" required value={item.service_id} onSelect={record=>setDraftItems(current=>current.map((entry,itemIndex)=>itemIndex===index?{...entry,service_id:record.value,description:record.label}:entry))}/></div>
           <label>Charge trigger<select value={item.charge_on} onChange={(event) => updateItem(index, "charge_on", event.target.value)}>{optionsFor(referenceOptions,"order_charge_trigger").map(option=><option key={option.code} value={option.code}>{option.label}</option>)}</select></label>
           <button type="button" className="icon-btn" disabled={draftItems.length === 1} onClick={() => setDraftItems((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove item"><Trash2 size={15}/></button>
         </div>)}
-        <button type="button" className="btn btn-secondary add-order-item" disabled={draftItems.length >= 20} onClick={() => setDraftItems((current) => [...current, { description: "", charge_on: "none" }])}><Plus size={14}/>Add another item</button>
+        <button type="button" className="btn btn-secondary add-order-item" disabled={draftItems.length >= 20} onClick={() => setDraftItems((current) => [...current, { service_id:"",description: "", charge_on: "none" }])}><Plus size={14}/>Add another item</button>
       </fieldset>
       {mode === "edit" && <label className="wide">Reason for modification<textarea required minLength={5} maxLength={500} rows={4} name="reason" placeholder="Explain why this order is being changed"/></label>}
       {state.message && <div className={state.ok ? "form-success wide" : "form-error wide"}>{state.message}</div>}

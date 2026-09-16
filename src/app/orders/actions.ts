@@ -9,10 +9,10 @@ const initialError = (message: string): OrderState => ({ ok: false, message });
 
 function parseItems(form: FormData) {
   try {
-    const items = JSON.parse(text(form, "items")) as Array<{ description?: string; charge_on?: string }>;
+    const items = JSON.parse(text(form, "items")) as Array<{ service_id?: string; description?: string; charge_on?: string }>;
     if (!Array.isArray(items) || items.length < 1 || items.length > 20) return null;
-    if (items.some((item) => String(item.description || "").trim().length < 2 || String(item.description || "").trim().length > 250)) return null;
-    return items.map((item) => ({ description: String(item.description).trim(), charge_on: item.charge_on || "none" }));
+    if (items.some((item) => !item.service_id || String(item.description || "").trim().length < 2 || String(item.description || "").trim().length > 250)) return null;
+    return items.map((item) => ({ service_id:item.service_id,description: String(item.description).trim(), charge_on: item.charge_on || "none" }));
   } catch {
     return null;
   }

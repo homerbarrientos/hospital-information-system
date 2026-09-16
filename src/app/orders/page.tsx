@@ -21,7 +21,7 @@ export default async function Orders() {
   ]);
   const orderIds = (orders || []).map((order) => order.id);
   const { data: items } = orderIds.length
-    ? await supabase.from("order_items").select("id,order_id,description,status,charge_on").in("order_id", orderIds)
+    ? await supabase.from("order_items").select("id,order_id,service_id,description,status,charge_on").in("order_id", orderIds)
     : { data: [] };
   const itemIds = (items || []).map((item) => item.id);
   const { data: results } = itemIds.length
