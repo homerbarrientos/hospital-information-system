@@ -3,7 +3,13 @@ import { PageHeading } from "@/components/app-shell";
 import { OrdersWorkspace } from "@/components/orders-workspace";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function Orders() {
+const activeOrderStatuses = ["requested", "acknowledged", "collected", "in_progress", "completed", "validated"];
+const orderStatusFilters = new Set([...activeOrderStatuses, "active", "released", "cancelled", "all"]);
+
+export default async function Orders({ searchParams }: { searchParams: Promise<{ status?: string | string[] }> }) {
+  const params = await searchParams;
+  const requestedStatus = Array.isArray(params.status) ? params.status[0] : params.status;
+  const statusFilter = requestedStatus && orderStatusFilters.has(requestedStatus) ? requestedStatus : "active";
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims.sub;
@@ -12,10 +18,14 @@ export default async function Orders() {
   const facilityId = roles?.[0]?.facility_id;
   if (!facilityId) return <div className="form-error">No active facility assignment.</div>;
 
+  let ordersQuery = supabase.from("clinical_orders").select("id,encounter_id,order_no,order_type,priority,status,ordered_at,instructions,version,cancellation_reason,ordering_doctor_id").order("ordered_at", { ascending: false }).limit(100);
+  if (statusFilter === "active") ordersQuery = ordersQuery.in("status", activeOrderStatuses);
+  else if (statusFilter !== "all") ordersQuery = ordersQuery.eq("status", statusFilter);
+
   const [{ data: patients }, { data: encounters }, { data: orders, error: ordersError }, {data:doctorAssignments}, {data:referenceOptions}] = await Promise.all([
     supabase.from("patients").select("id,mrn,first_name,last_name").order("last_name"),
-    supabase.from("encounters").select("id,encounter_no,patient_id,status,service_date,encounter_type,responsible_doctor_id").eq("facility_id", facilityId).in("status", ["in_consultation", "awaiting_service"]).order("created_at", { ascending: false }).limit(100),
-    supabase.from("clinical_orders").select("id,encounter_id,order_no,order_type,priority,status,ordered_at,instructions,version,cancellation_reason,ordering_doctor_id").order("ordered_at", { ascending: false }).limit(100),
+    supabase.from("encounters").select("id,encounter_no,patient_id,status,service_date,encounter_type,responsible_doctor_id").eq("facility_id", facilityId).order("created_at", { ascending: false }).limit(500),
+    ordersQuery,
     supabase.from("doctor_facility_assignments").select("doctor_id,doctors(id,first_name,last_name,suffix,specialty,status)").eq("facility_id",facilityId).eq("active",true),
     supabase.from("reference_options").select("code,label,reference_groups!inner(code)").in("reference_groups.code",["order_type","order_priority","order_charge_trigger"]).eq("active",true).order("sort_order"),
   ]);
@@ -32,6 +42,6 @@ export default async function Orders() {
   return <>
     <PageHeading eyebrow="Diagnostics" title="Orders and results" description="Create clinical requests, manage work status, validate results, and return them to the patient chart."/>
     {ordersError && <div className="form-error">Unable to load clinical orders: {ordersError.message}</div>}
-    <OrdersWorkspace patients={patients || []} encounters={encounters || []} orders={orders || []} items={items || []} results={results || []} doctors={doctors} referenceOptions={referenceOptions || []}/>
+    <OrdersWorkspace patients={patients || []} encounters={encounters || []} orders={orders || []} items={items || []} results={results || []} doctors={doctors} referenceOptions={referenceOptions || []} statusFilter={statusFilter}/>
   </>;
 }

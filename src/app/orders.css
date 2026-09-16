@@ -1,5 +1,9 @@
 .orders-table td { vertical-align: middle; }
 .orders-table td:last-child { min-width: 150px; }
+.order-worklist-filters { display: flex; align-items: end; justify-content: space-between; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: #f8fbfc; }
+.order-worklist-filters label { display: grid; gap: 6px; min-width: 230px; color: #304b60; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.order-worklist-filters select { min-height: 40px; border: 1px solid #adc1cc; border-radius: 8px; padding: 0 12px; background: white; color: var(--navy); font: inherit; text-transform: none; letter-spacing: normal; }
+.order-worklist-filters > span { color: var(--muted); font-size: 11px; }
 .order-items-summary { max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
 .orders-backdrop { z-index: 35; }
 .order-modal { width: min(880px, 100%); }
@@ -65,6 +69,8 @@
 .order-cancel-btn { min-height: 90px; border: 1px solid #c13d4a; background: #c13d4a; color: white; }
 
 @media (max-width: 760px) {
+  .order-worklist-filters { align-items: stretch; flex-direction: column; }
+  .order-worklist-filters label { min-width: 0; }
   .order-form { grid-template-columns: 1fr; }
   .order-form .wide { grid-column: auto; }
   .order-item-row,
