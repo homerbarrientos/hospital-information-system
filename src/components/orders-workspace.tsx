@@ -10,6 +10,7 @@ import {
   saveOrderResult,
   type OrderState,
 } from "@/app/orders/actions";
+import { SearchPicker } from "@/components/search-picker";
 
 type Patient = { id: string; mrn: string; first_name: string; last_name: string };
 type Encounter = { id: string; encounter_no: string; patient_id: string; status: string; service_date: string; encounter_type: string; responsible_doctor_id:string|null };
@@ -57,7 +58,7 @@ export function OrdersWorkspace({ patients, encounters, orders, items, results, 
         </tbody>
       </table></div>
     </section>
-    {creating && <OrderFormDialog mode="create" encounters={encounters} patients={patients} doctors={doctors} referenceOptions={referenceOptions} close={() => setCreating(false)}/>} 
+    {creating && <OrderFormDialog mode="create" referenceOptions={referenceOptions} close={() => setCreating(false)}/>} 
     {selected && <OrderDetailDialog order={selected} encounter={encounters.find((item) => item.id === selected.encounter_id)} patient={patientFor(selected)} items={items.filter((item) => item.order_id === selected.id)} results={results} doctors={doctors} referenceOptions={referenceOptions} close={() => setSelected(null)}/>} 
   </>;
 }
@@ -66,8 +67,8 @@ function ModalHead({ title, close }: { title: string; close: () => void }) {
   return <div className="modal-head"><div><p className="eyebrow">Orders and results</p><h3>{title}</h3></div><button className="icon-btn" onClick={close} aria-label="Close"><X size={17}/></button></div>;
 }
 
-function OrderFormDialog({ mode, encounters, patients, order, savedItems, close, doctors, referenceOptions }: {
-  mode: "create" | "edit"; encounters: Encounter[]; patients: Patient[]; order?: Order; savedItems?: Item[]; close: () => void; doctors:Doctor[];referenceOptions:ReferenceOption[];
+function OrderFormDialog({ mode, order, savedItems, close, referenceOptions }: {
+  mode: "create" | "edit"; order?: Order; savedItems?: Item[]; close: () => void; referenceOptions:ReferenceOption[];
 }) {
   const [state, action, pending] = useActionState(mode === "create" ? createOrder : amendOrder, initial);
   const [draftItems, setDraftItems] = useState<DraftItem[]>(() => savedItems?.map((item) => ({ description: item.description, charge_on: item.charge_on })) || [{ description: "", charge_on: "none" }]);
@@ -77,8 +78,8 @@ function OrderFormDialog({ mode, encounters, patients, order, savedItems, close,
     <form action={action} className="order-form">
       {order && <input type="hidden" name="order_id" value={order.id}/>}
       <input type="hidden" name="items" value={JSON.stringify(draftItems)}/>
-      {mode === "create" ? <label className="wide">Active patient encounter <span className="field-help">One patient may have multiple visits; select the current visit.</span><select required name="encounter_id" defaultValue=""><option value="" disabled>Select the current active encounter</option>{encounters.map((encounter) => { const patient = patients.find((item) => item.id === encounter.patient_id); return <option key={encounter.id} value={encounter.id}>{encounter.encounter_no} · {patient?.last_name}, {patient?.first_name} · {encounter.encounter_type} · {encounter.service_date} · {encounter.status.replaceAll("_", " ")}</option>; })}</select></label> : <div className="order-readonly wide">Patient and encounter cannot be changed after the order is created.</div>}
-      {mode==="create"&&<label className="wide">Ordering doctor<select required name="doctor_id" defaultValue=""><option value="" disabled>Select ordering doctor</option>{doctors.map(doctor=><option key={doctor.id} value={doctor.id}>{doctorLabel(doctor)} · {doctor.specialty}</option>)}</select></label>}
+      {mode === "create" ? <div className="wide"><SearchPicker kind="encounter" name="encounter_id" label="Active patient encounter" title="Select patient encounter" placeholder="No encounter selected" searchPlaceholder="Search patient, MRN, encounter number, or date" required help="One patient may have multiple visits; select the current visit."/></div> : <div className="order-readonly wide">Patient and encounter cannot be changed after the order is created.</div>}
+      {mode==="create"&&<div className="wide"><SearchPicker kind="doctor" name="doctor_id" label="Ordering doctor" title="Select ordering doctor" placeholder="No doctor selected" searchPlaceholder="Search doctor name or specialty" required/></div>}
       <label>Order type<select required name="order_type" defaultValue={order?.order_type || "laboratory"}>{optionsFor(referenceOptions,"order_type").map(option=><option key={option.code} value={option.code}>{option.label}</option>)}</select></label>
       <label>Priority<select required name="priority" defaultValue={order?.priority || "routine"}>{optionsFor(referenceOptions,"order_priority").map(option=><option key={option.code} value={option.code}>{option.label}</option>)}</select></label>
       <label className="wide">Clinical instructions<textarea maxLength={2000} name="instructions" rows={5} defaultValue={order?.instructions || ""} placeholder="Preparation, specimen, clinical indication, or special instructions"/></label>
@@ -110,7 +111,7 @@ function OrderDetailDialog({ order, encounter, patient, items, results, close, d
   const [advanceState, advanceAction, advancePending] = useActionState(advanceOrder, initial);
   const [cancelState, cancelAction, cancelPending] = useActionState(cancelOrder, initial);
   const next = nextStatus[order.status];
-  if (editing) return <OrderFormDialog mode="edit" encounters={encounter ? [encounter] : []} patients={patient ? [patient] : []} order={order} savedItems={items} doctors={doctors} referenceOptions={referenceOptions} close={() => setEditing(false)}/>;
+  if (editing) return <OrderFormDialog mode="edit" order={order} savedItems={items} referenceOptions={referenceOptions} close={() => setEditing(false)}/>;
   return <div className="modal-backdrop orders-backdrop"><section className="modal order-detail-modal" role="dialog" aria-modal="true">
     <ModalHead title={order.order_no} close={close}/>
     <div className="order-detail-body">

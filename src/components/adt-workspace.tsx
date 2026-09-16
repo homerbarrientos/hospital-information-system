@@ -13,6 +13,7 @@ import {
   type AdtState,
   type PatientChart,
 } from "@/app/admissions/actions";
+import { SearchPicker } from "@/components/search-picker";
 
 type Patient = { id: string; mrn: string; first_name: string; last_name: string };
 type Bed = { id: string; code: string; status: string; ward_id: string };
@@ -63,7 +64,7 @@ export function AdtWorkspace({
         </tbody>
       </table>
     </section>
-    {open && <AdmissionDialog patients={patients} availableBeds={available} facilityId={facilityId} bedLabel={bedLabel} doctors={doctors} close={() => setOpen(false)}/>} 
+    {open && <AdmissionDialog availableBeds={available} facilityId={facilityId} bedLabel={bedLabel} close={() => setOpen(false)}/>} 
   </>;
 }
 
@@ -132,7 +133,7 @@ function DischargeDialog({
       </div>
       <form action={action} className="adt-dialog-form discharge-form">
         <input type="hidden" name="admission_id" value={admissionId}/>
-        <label className="wide">Discharging doctor<select required name="doctor_id" defaultValue={defaultDoctorId}><option value="" disabled>Select discharging doctor</option>{doctors.map(doctor=><option key={doctor.id} value={doctor.id}>{doctorLabel(doctor)} · {doctor.specialty}</option>)}</select></label>
+        <div className="wide"><SearchPicker kind="doctor" name="doctor_id" label="Discharging doctor" title="Select discharging doctor" placeholder="No doctor selected" searchPlaceholder="Search doctor name or specialty" required defaultValue={defaultDoctorId} initialOption={doctors.find(doctor=>doctor.id===defaultDoctorId)?{value:defaultDoctorId,label:doctorLabel(doctors.find(doctor=>doctor.id===defaultDoctorId)),meta:doctors.find(doctor=>doctor.id===defaultDoctorId)?.specialty||""}:undefined}/></div>
         <label>Discharge disposition<select required name="disposition" defaultValue=""><option value="" disabled>Select outcome or destination</option>{dispositions.map(option=><option key={option.code} value={option.code}>{option.label}</option>)}</select></label>
         <label>Condition at discharge<input required minLength={2} maxLength={250} name="condition" placeholder="Stable, improved, guarded, or other condition"/></label>
         <label className="wide">Final diagnosis<textarea required minLength={2} maxLength={2000} name="final_diagnosis" rows={5} placeholder="Enter the confirmed diagnosis or diagnoses at discharge"/></label>
@@ -272,9 +273,9 @@ function AttachmentManagerDialog({
 }
 
 function AdmissionDialog({
-  patients, availableBeds, facilityId, bedLabel, close, doctors,
+  availableBeds, facilityId, bedLabel, close,
 }: {
-  patients: Patient[]; availableBeds: Bed[]; facilityId: string; bedLabel: (bedId: string) => string; close: () => void; doctors:Doctor[];
+  availableBeds: Bed[]; facilityId: string; bedLabel: (bedId: string) => string; close: () => void;
 }) {
   const [state, action, pending] = useActionState(admitPatient, initialState);
   return <div className="modal-backdrop">
@@ -282,9 +283,9 @@ function AdmissionDialog({
       <DialogHead eyebrow="Patient movement" title="New admission" close={close}/>
       <form action={action} className="patient-form">
         <input type="hidden" name="facility_id" value={facilityId}/>
-        <label className="wide">Patient<select required name="patient_id" defaultValue=""><option value="" disabled>Select patient</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.mrn} · {patient.last_name}, {patient.first_name}</option>)}</select></label>
+        <div className="wide"><SearchPicker kind="patient" name="patient_id" label="Patient" title="Select patient for admission" placeholder="No patient selected" searchPlaceholder="Search patient name or MRN" required/></div>
         <label className="wide">Available bed<select required name="bed_id" defaultValue=""><option value="" disabled>Select ward and bed</option>{availableBeds.map((bed) => <option key={bed.id} value={bed.id}>{bedLabel(bed.id)}</option>)}</select></label>
-        <label className="wide">Admitting / attending doctor<select required name="doctor_id" defaultValue=""><option value="" disabled>Select doctor</option>{doctors.map(doctor=><option key={doctor.id} value={doctor.id}>{doctorLabel(doctor)} · {doctor.specialty}</option>)}</select></label>
+        <div className="wide"><SearchPicker kind="doctor" name="doctor_id" label="Admitting / attending doctor" title="Select admitting doctor" placeholder="No doctor selected" searchPlaceholder="Search doctor name or specialty" required/></div>
         {state.message && <div className={state.ok ? "form-success wide" : "form-error wide"}>{state.message}</div>}
         <div className="form-actions wide"><button type="button" className="btn btn-secondary" onClick={close}>Cancel</button><button disabled={pending} className="btn btn-primary">{pending ? "Admitting…" : "Admit patient"}</button></div>
       </form>

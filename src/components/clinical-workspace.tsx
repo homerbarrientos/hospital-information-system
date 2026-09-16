@@ -9,6 +9,7 @@ import {
   updateAllergy,
 } from "@/app/clinical/actions";
 import { EncounterDetailModal } from "@/components/encounter-detail-modal";
+import { SearchPicker } from "@/components/search-picker";
 
 type Patient = {
   id: string;
@@ -199,10 +200,8 @@ export function ClinicalWorkspace({
       )}
       {open && (
         <ConsultationDialog
-          patients={patients}
           allergies={allergies}
           facilityId={facilityId}
-          doctors={doctors}
           close={() => setOpen(false)}
         />
       )}
@@ -228,16 +227,12 @@ function ClinicalSummary({
 }
 
 function ConsultationDialog({
-  patients,
   allergies,
   facilityId,
-  doctors,
   close,
 }: {
-  patients: Patient[];
   allergies: Allergy[];
   facilityId: string;
-  doctors: Doctor[];
   close: () => void;
 }) {
   const [state, action, pending] = useActionState(createConsultation, initial);
@@ -272,23 +267,8 @@ function ConsultationDialog({
         </div>
         <form action={action} className="patient-form">
           <input type="hidden" name="facility_id" value={facilityId} />
-          <label className="wide">
-            Patient
-            <select
-              required
-              name="patient_id"
-              value={patientId}
-              onChange={(event) => setPatientId(event.target.value)}
-            >
-              <option value="">Select a registered patient</option>
-              {patients.map((patient) => (
-                <option key={patient.id} value={patient.id}>
-                  {patient.mrn} · {patient.last_name}, {patient.first_name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="wide">Responsible doctor<select required name="doctor_id" defaultValue=""><option value="" disabled>Select attending or consulting doctor</option>{doctors.map((doctor)=><option key={doctor.id} value={doctor.id}>{doctorLabel(doctor)} · {doctor.specialty}</option>)}</select></label>
+          <div className="wide"><SearchPicker kind="patient" name="patient_id" label="Patient" title="Select registered patient" placeholder="No patient selected" searchPlaceholder="Search patient name or MRN" required value={patientId} onChange={setPatientId}/></div>
+          <div className="wide"><SearchPicker kind="doctor" name="doctor_id" label="Responsible doctor" title="Select responsible doctor" placeholder="No doctor selected" searchPlaceholder="Search doctor name or specialty" required/></div>
           {patientId && (
             <div className={`${active.length ? "allergy-panel" : "notice"} allergy-panel-row wide`}>
               <div>{active.length ? (
