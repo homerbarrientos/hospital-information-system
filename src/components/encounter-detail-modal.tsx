@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FilePenLine, X } from "lucide-react";
 import {
   amendConsultation,
@@ -68,6 +69,7 @@ export function EncounterDetailModal({
   allergies: Allergy[];
   onClose: () => void;
 }) {
+  const router = useRouter();
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loadError, setLoadError] = useState("");
   const [editing, setEditing] = useState(false);
@@ -168,7 +170,8 @@ export function EncounterDetailModal({
     if (!amendmentState.ok) return;
     setEditing(false);
     void loadDetail();
-  }, [amendmentState, loadDetail]);
+    router.refresh();
+  }, [amendmentState, loadDetail, router]);
 
   const vitalValue = (code: string) =>
     detail?.vitals.find((vital) => vital.code === code)?.value ?? "";
