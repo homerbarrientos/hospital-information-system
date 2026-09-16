@@ -33,7 +33,7 @@ select o.id,v.code,v.name,v.description from public.organizations o cross join(v
 )v(code,name,description) where o.code='INF' on conflict(organization_id,code) do update set name=excluded.name,description=excluded.description;
 
 insert into public.reference_options(group_id,code,label,sort_order)
-select g.id,v.code,v.label,v.sort_order from public.reference_groups g join public.organizations o on o.id=g.organization_id cross join(values
+select g.id,v.code,v.label,v.sort_order from public.reference_groups g join public.organizations o on o.id=g.organization_id join(values
  ('sex_at_birth','female','Female',10),('sex_at_birth','male','Male',20),('sex_at_birth','intersex','Intersex',30),('sex_at_birth','unknown','Unknown',40),
  ('doctor_specialty','general_medicine','General Medicine',10),('doctor_specialty','family_medicine','Family Medicine',20),('doctor_specialty','internal_medicine','Internal Medicine',30),('doctor_specialty','pediatrics','Pediatrics',40),('doctor_specialty','surgery','Surgery',50),('doctor_specialty','obstetrics_gynecology','Obstetrics and Gynecology',60),
  ('order_type','laboratory','Laboratory',10),('order_type','imaging','Imaging',20),('order_type','procedure','Procedure',30),('order_type','supply','Supply',40),('order_type','other','Other',50),
