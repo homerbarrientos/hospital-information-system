@@ -1,0 +1,57 @@
+/* Shared listing behavior: bounded scrolling, sticky headers, and zebra rows. */
+.table-wrap {
+  max-height: 620px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f3f7f9;
+}
+
+.data-table td {
+  background: inherit;
+}
+
+.data-table tbody tr:nth-child(odd) {
+  background: #fff;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: #f5f9fa;
+}
+
+.data-table tbody tr:hover {
+  background: #eaf6f4;
+}
+
+.data-table tbody tr:has(.empty-state) {
+  background: #fff;
+}
+
+/* A consultation uses two rows; keep both rows in one alternating band. */
+.consultation-table tbody .consultation-main-row:nth-child(4n + 1),
+.consultation-table tbody .consultation-main-row:nth-child(4n + 1) + .consultation-detail-row {
+  background: #fff;
+}
+
+.consultation-table tbody .consultation-main-row:nth-child(4n + 3),
+.consultation-table tbody .consultation-main-row:nth-child(4n + 3) + .consultation-detail-row {
+  background: #f5f9fa;
+}
+
+.consultation-table tbody .consultation-main-row:hover,
+.consultation-table tbody .consultation-main-row:hover + .consultation-detail-row,
+.consultation-table tbody .consultation-main-row:has(+ .consultation-detail-row:hover),
+.consultation-table tbody .consultation-detail-row:hover {
+  background: #eaf6f4;
+}
+
+@media (max-width: 760px) {
+  .table-wrap {
+    max-height: 70vh;
+  }
+}
