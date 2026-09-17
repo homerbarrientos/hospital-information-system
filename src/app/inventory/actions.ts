@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export type InventoryState={ok:boolean;message:string;movementId?:string};
-export const inventoryInitial:InventoryState={ok:false,message:""};
 const value=(form:FormData,key:string)=>String(form.get(key)||"").trim();
 const error=(message:string):InventoryState=>({ok:false,message});
 

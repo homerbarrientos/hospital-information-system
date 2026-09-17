@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { ArrowRightLeft, Boxes, ChevronRight, ClipboardList, FilePlus2, PackageCheck, Pencil, Plus, Scale, Truck, X } from "lucide-react";
 import { SearchPicker } from "@/components/search-picker";
-import { addInventoryAttachment, adjustInventory, createSupplier, inventoryInitial, postInventoryStock, setSupplierStatus, transferInventory, updateSupplier } from "@/app/inventory/actions";
+import { addInventoryAttachment, adjustInventory, createSupplier, postInventoryStock, setSupplierStatus, transferInventory, updateSupplier, type InventoryState } from "@/app/inventory/actions";
 import { createMedicine, type MedicineState } from "@/app/administration/medicines/actions";
 
 export type Product={id:string;code:string;name:string;unit:string;reorder_level:number};
@@ -14,6 +14,7 @@ export type Movement={id:string;store_id:string;product_id:string;lot_id:string|
 export type Reference={code:string;label:string;reference_groups:{code:string}|Array<{code:string}>};
 export type Document={id:string;movement_id:string;display_name:string;description:string|null;uploaded_at:string;url:string};
 type Tab="overview"|"beginning"|"receiving"|"adjustments"|"transfers"|"stock-card"|"suppliers";
+const inventoryInitial:InventoryState={ok:false,message:""};
 
 const tabs:[Tab,string][]=[["overview","Stock Overview"],["beginning","Beginning Balance"],["receiving","Receiving"],["adjustments","Adjustments"],["transfers","Transfers"],["stock-card","Stock Card"],["suppliers","Suppliers"]];
 const refOptions=(references:Reference[],group:string)=>references.filter(option=>{const relation=Array.isArray(option.reference_groups)?option.reference_groups[0]:option.reference_groups;return relation?.code===group;});
