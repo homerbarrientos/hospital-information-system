@@ -1,66 +1,10 @@
 import Link from "next/link";
 
-export type ListState = {
-  query: string;
-  status: string;
-  date: string;
-  page: number;
-  total: number;
-  pageSize: number;
-};
+export type ListState = { query:string;status:string;date:string;page:number;total:number;pageSize:number };
+export type ListStatusOption = { value:string;label:string };
 
-export type ListStatusOption = { value: string; label: string };
-
-export function ListControls({
-  basePath,
-  state,
-  statusOptions,
-  searchPlaceholder,
-  dateLabel = "Date",
-}: {
-  basePath: string;
-  state: ListState;
-  statusOptions: ListStatusOption[];
-  searchPlaceholder: string;
-  dateLabel?: string;
-}) {
-  const pageCount = Math.max(1, Math.ceil(state.total / state.pageSize));
-  const first = state.total ? (state.page - 1) * state.pageSize + 1 : 0;
-  const last = Math.min(state.page * state.pageSize, state.total);
-  const pageHref = (page: number) => {
-    const params = new URLSearchParams();
-    if (state.query) params.set("q", state.query);
-    if (state.status) params.set("status", state.status);
-    if (state.date) params.set("date", state.date);
-    params.set("page", String(page));
-    return `${basePath}?${params.toString()}`;
-  };
-
-  return <div className="list-controls">
-    <form action={basePath} method="get" className="list-filter-form">
-      <label className="list-search-field">Search
-        <input name="q" defaultValue={state.query} placeholder={searchPlaceholder}/>
-      </label>
-      <label>Status
-        <select name="status" defaultValue={state.status}>
-          {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      </label>
-      <label>{dateLabel}
-        <input type="date" name="date" defaultValue={state.date}/>
-      </label>
-      <div className="list-filter-actions">
-        <button className="btn btn-primary" type="submit">Apply filters</button>
-        <Link className="btn btn-secondary" href={basePath}>Clear</Link>
-      </div>
-    </form>
-    <div className="list-pagination">
-      <span>Showing {first}–{last} of {state.total} records</span>
-      <div>
-        {state.page > 1 ? <Link className="btn btn-secondary" href={pageHref(state.page - 1)}>Previous</Link> : <span className="btn btn-secondary disabled">Previous</span>}
-        <strong>Page {state.page} of {pageCount}</strong>
-        {state.page < pageCount ? <Link className="btn btn-secondary" href={pageHref(state.page + 1)}>Next</Link> : <span className="btn btn-secondary disabled">Next</span>}
-      </div>
-    </div>
-  </div>;
+export function ListControls({basePath,state,statusOptions,searchPlaceholder,dateLabel="Date",showDate=true}:{basePath:string;state:ListState;statusOptions:ListStatusOption[];searchPlaceholder:string;dateLabel?:string;showDate?:boolean}){
+  const pageCount=Math.max(1,Math.ceil(state.total/state.pageSize));const first=state.total?(state.page-1)*state.pageSize+1:0;const last=Math.min(state.page*state.pageSize,state.total);
+  const pageHref=(page:number)=>{const params=new URLSearchParams();if(state.query)params.set("q",state.query);if(state.status)params.set("status",state.status);if(state.date)params.set("date",state.date);params.set("page",String(page));return `${basePath}?${params.toString()}`};
+  return <div className="list-controls"><form action={basePath} method="get" className="list-filter-form"><label className="list-search-field">Search<input name="q" defaultValue={state.query} placeholder={searchPlaceholder}/></label><label>Status<select name="status" defaultValue={state.status}>{statusOptions.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select></label>{showDate?<label>{dateLabel}<input type="date" name="date" defaultValue={state.date}/></label>:null}<div className="list-filter-actions"><button className="btn btn-primary" type="submit">Apply filters</button><Link className="btn btn-secondary" href={basePath}>Clear</Link></div></form><div className="list-pagination"><span>Showing {first}–{last} of {state.total} records</span><div>{state.page>1?<Link className="btn btn-secondary" href={pageHref(state.page-1)}>Previous</Link>:<span className="btn btn-secondary disabled">Previous</span>}<strong>Page {state.page} of {pageCount}</strong>{state.page<pageCount?<Link className="btn btn-secondary" href={pageHref(state.page+1)}>Next</Link>:<span className="btn btn-secondary disabled">Next</span>}</div></div></div>;
 }
