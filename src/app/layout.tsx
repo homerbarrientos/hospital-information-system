@@ -9,6 +9,7 @@ import "./reference-data.css";
 import "./navigation.css";
 import "./encounter-details.css";
 import "./pharmacy.css";
+import "./listings.css";
 import{RootShell}from"@/components/root-shell";
 
 export const metadata: Metadata = {
