@@ -14,6 +14,7 @@ import {
   type PatientChart,
 } from "@/app/admissions/actions";
 import { SearchPicker } from "@/components/search-picker";
+import { ListControls, type ListState } from "@/components/list-controls";
 
 type Patient = { id: string; mrn: string; first_name: string; last_name: string };
 type Bed = { id: string; code: string; status: string; ward_id: string };
@@ -27,10 +28,10 @@ const initialState: AdtState = { ok: false, message: "" };
 const doctorLabel=(doctor?:Doctor)=>doctor?`Dr. ${doctor.last_name}, ${doctor.first_name}${doctor.suffix?` ${doctor.suffix}`:""}`:"Not assigned";
 
 export function AdtWorkspace({
-  patients, beds, wards, encounters, admissions, stays, facilityId, doctors, dispositions,
+  patients, beds, wards, encounters, admissions, stays, facilityId, doctors, dispositions, listState,
 }: {
   patients: Patient[]; beds: Bed[]; wards: Ward[]; encounters: Encounter[];
-  admissions: Admission[]; stays: Stay[]; facilityId: string; doctors:Doctor[];dispositions:ReferenceOption[];
+  admissions: Admission[]; stays: Stay[]; facilityId: string; doctors:Doctor[];dispositions:ReferenceOption[];listState:ListState;
 }) {
   const [open, setOpen] = useState(false);
   const available = beds.filter((bed) => bed.status === "available");
@@ -43,8 +44,19 @@ export function AdtWorkspace({
     <div className="toolbar">
       <button className="btn btn-primary" onClick={() => setOpen(true)}><Plus size={15}/>New admission</button>
     </div>
-    <section className="card table-wrap">
-      <table className="data-table adt-table">
+    <section className="card">
+      <ListControls
+        basePath="/admissions"
+        state={listState}
+        statusOptions={[
+          { value: "admitted", label: "Admitted patients" },
+          { value: "discharged", label: "Discharged patients" },
+          { value: "all", label: "All admissions" },
+        ]}
+        searchPlaceholder="Patient name or MRN"
+        dateLabel="Admission date"
+      />
+      <div className="table-wrap list-table-scroll"><table className="data-table adt-table">
         <thead><tr><th>Admission</th><th>Patient</th><th>Attending doctor</th><th>Current location</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody>
           {admissions.map((admission) => {
@@ -62,7 +74,7 @@ export function AdtWorkspace({
           })}
           {!admissions.length && <tr><td colSpan={6} className="empty-state">No admissions recorded.</td></tr>}
         </tbody>
-      </table>
+      </table></div>
     </section>
     {open && <AdmissionDialog availableBeds={available} facilityId={facilityId} bedLabel={bedLabel} close={() => setOpen(false)}/>} 
   </>;

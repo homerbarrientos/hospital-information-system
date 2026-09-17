@@ -1,7 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState, useState } from "react";
 import { Beaker, ChevronRight, ClipboardList, FilePenLine, Plus, Trash2, X } from "lucide-react";
 import {
   advanceOrder,
@@ -12,6 +11,7 @@ import {
   type OrderState,
 } from "@/app/orders/actions";
 import { SearchPicker } from "@/components/search-picker";
+import { ListControls, type ListState } from "@/components/list-controls";
 
 type Patient = { id: string; mrn: string; first_name: string; last_name: string };
 type Encounter = { id: string; encounter_no: string; patient_id: string; status: string; service_date: string; encounter_type: string; responsible_doctor_id:string|null };
@@ -24,17 +24,9 @@ type DraftItem = { service_id: string; description: string; charge_on: string };
 const initial: OrderState = { ok: false, message: "" };
 const doctorLabel=(doctor?:Doctor)=>doctor?`Dr. ${doctor.last_name}, ${doctor.first_name}${doctor.suffix?` ${doctor.suffix}`:""}`:"Not assigned";
 const optionsFor=(options:ReferenceOption[],group:string)=>options.filter(option=>{const relation=Array.isArray(option.reference_groups)?option.reference_groups[0]:option.reference_groups;return relation?.code===group;});
-const orderStatusOptions = [
-  ["active", "Active orders"], ["requested", "Requested"], ["acknowledged", "Acknowledged"],
-  ["collected", "Collected"], ["in_progress", "In progress"], ["completed", "Completed"],
-  ["validated", "Validated"], ["released", "Released"], ["cancelled", "Cancelled"], ["all", "All statuses"],
-] as const;
-
-export function OrdersWorkspace({ patients, encounters, orders, items, results, doctors, referenceOptions, statusFilter }: {
-  patients: Patient[]; encounters: Encounter[]; orders: Order[]; items: Item[]; results: Result[]; doctors:Doctor[];referenceOptions:ReferenceOption[];statusFilter:string;
+export function OrdersWorkspace({ patients, encounters, orders, items, results, doctors, referenceOptions, listState }: {
+  patients: Patient[]; encounters: Encounter[]; orders: Order[]; items: Item[]; results: Result[]; doctors:Doctor[];referenceOptions:ReferenceOption[];listState:ListState;
 }) {
-  const router = useRouter();
-  const [filterPending, startFilterTransition] = useTransition();
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<Order | null>(null);
   const patientFor = (order: Order) => {
@@ -45,18 +37,25 @@ export function OrdersWorkspace({ patients, encounters, orders, items, results, 
     <div className="toolbar"><button className="btn btn-primary" onClick={() => setCreating(true)}><Plus size={15}/>Create order</button></div>
     <section className="card">
       <div className="card-header"><h3>Clinical order worklist</h3><span className="badge blue">Live data</span></div>
-      <div className="order-worklist-filters">
-        <label>Display by status
-          <select value={statusFilter} disabled={filterPending} onChange={(event) => {
-            const nextFilter = event.target.value;
-            startFilterTransition(() => router.replace(`/orders?status=${encodeURIComponent(nextFilter)}`));
-          }}>
-            {orderStatusOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-          </select>
-        </label>
-        <span>{filterPending ? "Loading records…" : `${orders.length} ${orders.length === 1 ? "order" : "orders"} shown`}</span>
-      </div>
-      <div className="table-wrap"><table className="data-table orders-table">
+      <ListControls
+        basePath="/orders"
+        state={listState}
+        statusOptions={[
+          { value: "active", label: "Active orders" },
+          { value: "requested", label: "Requested" },
+          { value: "acknowledged", label: "Acknowledged" },
+          { value: "collected", label: "Collected" },
+          { value: "in_progress", label: "In progress" },
+          { value: "completed", label: "Completed" },
+          { value: "validated", label: "Validated" },
+          { value: "released", label: "Released" },
+          { value: "cancelled", label: "Cancelled" },
+          { value: "all", label: "All statuses" },
+        ]}
+        searchPlaceholder="Patient name or MRN"
+        dateLabel="Order date"
+      />
+      <div className="table-wrap list-table-scroll"><table className="data-table orders-table">
         <thead><tr><th>Order</th><th>Patient / Encounter</th><th>Ordering doctor</th><th>Requested services</th><th>Priority</th><th>Status</th><th>Action</th></tr></thead>
         <tbody>
           {orders.map((order) => {
@@ -73,7 +72,7 @@ export function OrdersWorkspace({ patients, encounters, orders, items, results, 
               <td><button className="btn btn-secondary" onClick={() => setSelected(order)}>View / manage <ChevronRight size={14}/></button></td>
             </tr>;
           })}
-          {!orders.length && <tr><td colSpan={7} className="empty-state">No {statusFilter === "all" ? "clinical" : statusFilter.replaceAll("_", " ")} orders found.</td></tr>}
+          {!orders.length && <tr><td colSpan={7} className="empty-state">No orders match the selected filters.</td></tr>}
         </tbody>
       </table></div>
     </section>

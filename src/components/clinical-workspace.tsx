@@ -10,6 +10,7 @@ import {
 } from "@/app/clinical/actions";
 import { EncounterDetailModal } from "@/components/encounter-detail-modal";
 import { SearchPicker } from "@/components/search-picker";
+import { ListControls, type ListState } from "@/components/list-controls";
 
 type Patient = {
   id: string;
@@ -57,6 +58,7 @@ export function ClinicalWorkspace({
   consultationDetails,
   facilityId,
   doctors,
+  listState,
 }: {
   patients: Patient[];
   allergies: Allergy[];
@@ -64,6 +66,7 @@ export function ClinicalWorkspace({
   consultationDetails: ConsultationDetail[];
   facilityId: string;
   doctors: Doctor[];
+  listState: ListState;
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Encounter | null>(null);
@@ -81,7 +84,21 @@ export function ClinicalWorkspace({
           <h3>Recent consultations</h3>
           <span className="badge blue">Live data</span>
         </div>
-        <div className="table-wrap">
+        <ListControls
+          basePath="/clinical"
+          state={listState}
+          statusOptions={[
+            { value: "active", label: "Active consultations" },
+            { value: "in_consultation", label: "In consultation" },
+            { value: "awaiting_service", label: "Awaiting service" },
+            { value: "completed", label: "Completed" },
+            { value: "cancelled", label: "Cancelled" },
+            { value: "all", label: "All consultations" },
+          ]}
+          searchPlaceholder="Patient name or MRN"
+          dateLabel="Service date"
+        />
+        <div className="table-wrap list-table-scroll">
           <table className="data-table consultation-table">
             <thead>
               <tr>
@@ -180,7 +197,7 @@ export function ClinicalWorkspace({
               {!encounters.length && (
                 <tr>
                   <td colSpan={6} className="empty-state">
-                    No consultations recorded yet.
+                    No consultations match the selected filters.
                   </td>
                 </tr>
               )}
