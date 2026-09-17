@@ -10,6 +10,8 @@ import "./navigation.css";
 import "./encounter-details.css";
 import "./pharmacy.css";
 import "./listings.css";
+import "./inventory.css";
+import "./patient-profile.css";
 import{RootShell}from"@/components/root-shell";
 
 export const metadata: Metadata = {

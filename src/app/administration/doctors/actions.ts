@@ -20,13 +20,23 @@ export async function saveDoctor(_: DoctorState, form: FormData): Promise<Doctor
     phone: value(form, "phone"),
     email: value(form, "email"),
     target_department: value(form, "department_id") || null,
+    prc_issued_on: value(form, "prc_issued_on") || null,
+    prc_expires_on: value(form, "prc_expires_on") || null,
+    credential_status: value(form, "credential_status") || "unverified",
+    philhealth_accreditation_no: value(form, "philhealth_accreditation_no"),
+    philhealth_valid_from: value(form, "philhealth_valid_from") || null,
+    philhealth_valid_until: value(form, "philhealth_valid_until") || null,
+    subspecialty: value(form, "subspecialty"),
+    doctor_type: value(form, "doctor_type"),
+    clinic_schedule: value(form, "clinic_schedule"),
+    professional_fee: value(form, "professional_fee") ? Number(value(form, "professional_fee")) : null,
   };
   if (!common.first_name || !common.last_name || !common.license_number || !common.specialty) {
     return { ok: false, message: "First name, last name, license number, and specialty are required." };
   }
   const { error } = doctorId
-    ? await supabase.rpc("update_doctor", { ...common, target_doctor: doctorId, expected_version: Number(value(form, "version")), modification_reason: value(form, "reason") })
-    : await supabase.rpc("create_doctor", common);
+    ? await supabase.rpc("update_doctor_extended", { ...common, target_doctor: doctorId, expected_version: Number(value(form, "version")), modification_reason: value(form, "reason") })
+    : await supabase.rpc("create_doctor_extended", common);
   if (error) return { ok: false, message: error.message };
   revalidatePath("/administration/doctors");
   revalidatePath("/clinical");
