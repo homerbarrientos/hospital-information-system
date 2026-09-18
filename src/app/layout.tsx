@@ -13,6 +13,7 @@ import "./listings.css";
 import "./inventory.css";
 import "./patient-profile.css";
 import "./billing.css";
+import "./charge-master.css";
 import{RootShell}from"@/components/root-shell";
 
 export const metadata: Metadata = {
