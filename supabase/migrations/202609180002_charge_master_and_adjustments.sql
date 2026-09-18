@@ -124,10 +124,30 @@ begin
  else
   select to_jsonb(d) into old_record from public.doctor_fee_schedules d where d.id=target_schedule and d.facility_id=target_facility for update;
   if old_record is null or length(trim(coalesce(change_reason,'')))<5 then raise exception 'Schedule and modification reason are required';end if;
-  update public.doctor_fee_schedules set doctor_id=target_doctor,service_id=target_service,encounter_type=coalesce(nullif(trim(fee_encounter_type),''),'all'),room_type=coalesce(nullif(trim(fee_room_type),''),'all'),standard_amount=standard_amount,minimum_amount=minimum_price,maximum_amount=maximum_price,hospital_share_percent=coalesce(hospital_share,0),effective_from=coalesce(effective_date,current_date),version=version+1,updated_by=auth.uid(),updated_at=now() where id=target_schedule and version=expected_version returning id into sid;
+  update public.doctor_fee_schedules set doctor_id=target_doctor,service_id=target_service,encounter_type=coalesce(nullif(trim(fee_encounter_type),''),'all'),room_type=coalesce(nullif(trim(fee_room_type),''),'all'),standard_amount=save_doctor_fee_schedule.standard_amount,minimum_amount=minimum_price,maximum_amount=maximum_price,hospital_share_percent=coalesce(hospital_share,0),effective_from=coalesce(effective_date,current_date),version=version+1,updated_by=auth.uid(),updated_at=now() where id=target_schedule and version=expected_version returning id into sid;
   if sid is null then raise exception 'Fee schedule changed. Refresh and try again';end if;
  end if;
  insert into public.audit_events(organization_id,facility_id,actor_id,event_type,object_type,object_id,reason,details) values(org,target_facility,auth.uid(),case when target_schedule is null then 'doctor_fee.created' else 'doctor_fee.updated' end,'doctor_fee_schedule',sid,nullif(trim(change_reason),''),jsonb_build_object('previous',old_record,'standard_amount',standard_amount));return sid;
+end$$;
+
+create or replace function public.set_charge_master_status(target_facility uuid,target_record uuid,record_type text,make_active boolean,change_reason text)
+returns void language plpgsql security definer set search_path='' as $$
+declare org uuid;object_name text;
+begin
+ if not public.has_privilege('charge_master.write',target_facility) then raise exception 'Not authorized to maintain the charge master';end if;
+ if length(trim(coalesce(change_reason,'')))<5 then raise exception 'A reason of at least five characters is required';end if;
+ select organization_id into org from public.facilities where id=target_facility;
+ if record_type='charge' then
+  update public.service_catalog s set status=case when make_active then 'active'::public.record_status else 'inactive'::public.record_status end,version=s.version+1,updated_by=auth.uid(),updated_at=now()
+  where s.id=target_record and s.organization_id=org returning s.name into object_name;
+ elsif record_type='doctor_fee' then
+  update public.doctor_fee_schedules d set active=make_active,version=d.version+1,updated_by=auth.uid(),updated_at=now()
+  where d.id=target_record and d.facility_id=target_facility returning 'Doctor fee schedule' into object_name;
+ else raise exception 'Invalid master record type';
+ end if;
+ if object_name is null then raise exception 'Master record not found';end if;
+ insert into public.audit_events(organization_id,facility_id,actor_id,event_type,object_type,object_id,reason,details)
+ values(org,target_facility,auth.uid(),'charge_master.status_changed',record_type,target_record,trim(change_reason),jsonb_build_object('active',make_active,'name',object_name));
 end$$;
 
 create or replace function public.request_charge_adjustment(target_entry uuid,proposed_price numeric,adjustment_reason text,attachment text)
@@ -184,6 +204,7 @@ from public.ledger_entries le join public.patient_accounts a on a.id=le.account_
 grant select on public.doctor_fee_schedules,public.billing_adjustment_requests,public.billing_patient_balances,public.billing_daily_summary to authenticated;
 grant execute on function public.save_charge_master_item(uuid,uuid,text,text,text,uuid,text,text,boolean,numeric,numeric,numeric,boolean,boolean,integer,text) to authenticated;
 grant execute on function public.save_doctor_fee_schedule(uuid,uuid,uuid,uuid,text,text,numeric,numeric,numeric,numeric,date,integer,text) to authenticated;
+grant execute on function public.set_charge_master_status(uuid,uuid,text,boolean,text) to authenticated;
 grant execute on function public.request_charge_adjustment(uuid,numeric,text,text) to authenticated;
 grant execute on function public.decide_charge_adjustment(uuid,text,text) to authenticated;
 
