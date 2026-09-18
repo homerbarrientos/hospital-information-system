@@ -3,7 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { Banknote, CircleDollarSign, FilePlus2, Plus, ReceiptText, Search, ShieldAlert, WalletCards, X } from "lucide-react";
 import { SearchPicker } from "@/components/search-picker";
-import { billingInitial, closeCashierShift, openCashierShift, postPatientCharge, postPatientPayment, reverseLedgerEntry } from "@/app/billing/actions";
+import { closeCashierShift, openCashierShift, postPatientCharge, postPatientPayment, reverseLedgerEntry } from "@/app/billing/actions";
 
 type Patient={id:string;mrn:string;first_name:string;last_name:string};
 type Account={id:string;patient_id:string;patients:Patient|Patient[]};
@@ -11,6 +11,7 @@ type Entry={id:string;account_id:string;encounter_id:string|null;kind:string;sou
 type Payment={id:string;account_id:string;receipt_no:string;payment_method:string;amount:number|string;status:string;external_reference:string|null;posted_at:string;patient_accounts:{facility_id:string;patients:Patient|Patient[]}|{facility_id:string;patients:Patient|Patient[]}[]};
 type Shift={id:string;cashier_id:string;opened_at:string;opening_amount:number|string;closed_at:string|null;expected_amount:number|string|null;actual_amount:number|string|null;status:string};
 type Method={code:string;label:string};
+const billingInitial={ok:false,message:""};
 const money=(n:number|string)=>new Intl.NumberFormat("en-PH",{style:"currency",currency:"PHP"}).format(Number(n)||0);
 const one=<T,>(v:T|T[])=>Array.isArray(v)?v[0]:v;
 
