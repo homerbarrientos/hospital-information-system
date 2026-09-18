@@ -33,6 +33,14 @@ create policy "assigned payment group read" on public.reference_groups for selec
 drop policy if exists "assigned payment option read" on public.reference_options;
 create policy "assigned payment option read" on public.reference_options for select using(exists(select 1 from public.reference_groups g join public.facilities f on f.organization_id=g.organization_id where g.id=reference_options.group_id and g.code='payment_method' and public.user_has_facility(f.id)));
 
+-- Existing installations may have older return types. PostgreSQL requires dropping
+-- those signatures before they can be recreated with the current contracts.
+drop function if exists public.open_cashier_shift(uuid,numeric);
+drop function if exists public.close_cashier_shift(uuid,numeric);
+drop function if exists public.post_patient_charge(uuid,uuid,text,numeric);
+drop function if exists public.post_patient_payment(uuid,uuid,numeric,text,text);
+drop function if exists public.reverse_ledger_entry(uuid,text);
+
 create or replace function public.open_cashier_shift(target_facility uuid,opening_cash numeric) returns uuid language plpgsql security definer set search_path='' as $$
 declare result uuid;
 begin
