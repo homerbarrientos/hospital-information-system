@@ -30,3 +30,10 @@ export async function decideAdjustment(_:ChargeMasterState,form:FormData):Promis
  const{error}=await supabase.rpc("decide_charge_adjustment",{target_request:value(form,"request_id"),decision,decision_notes:value(form,"reason")});
  if(error)return fail(error.message);revalidatePath("/administration/charge-master");revalidatePath("/billing");return done(`Adjustment ${decision}.`);
 }
+
+export async function setMasterRecordStatus(_:ChargeMasterState,form:FormData):Promise<ChargeMasterState>{
+ const supabase=await createClient(),recordType=value(form,"record_type"),makeActive=value(form,"make_active")==="true",reason=value(form,"reason");
+ if(!value(form,"record_id")||!['charge','doctor_fee'].includes(recordType)||reason.length<5)return fail("Select a record and enter a reason of at least five characters.");
+ const{error}=await supabase.rpc("set_charge_master_status",{target_facility:value(form,"facility_id"),target_record:value(form,"record_id"),record_type:recordType,make_active:makeActive,change_reason:reason});
+ if(error)return fail(error.message);revalidatePath("/administration/charge-master");return done(makeActive?"Master record activated.":"Master record deactivated with audit history.");
+}
