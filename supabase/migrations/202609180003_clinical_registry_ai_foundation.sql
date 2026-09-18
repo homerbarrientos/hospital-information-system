@@ -61,8 +61,7 @@ create table if not exists public.encounter_care_team(
  version integer not null default 1,
  assigned_by uuid not null references public.profiles,
  updated_by uuid references public.profiles,
- updated_at timestamptz,
- unique(encounter_id,doctor_id,role)
+ updated_at timestamptz
 );
 
 create unique index if not exists diagnoses_one_active_principal_idx on public.diagnoses(encounter_id) where classification='principal' and clinical_status='active' and verification_status<>'ruled_out';
@@ -70,6 +69,7 @@ create index if not exists diagnosis_catalog_search_idx on public.diagnosis_cata
 create index if not exists diagnoses_registry_lookup_idx on public.diagnoses(encounter_id,classification,clinical_status,created_at desc);
 create index if not exists care_team_encounter_lookup_idx on public.encounter_care_team(encounter_id,status,role);
 create unique index if not exists care_team_one_primary_idx on public.encounter_care_team(encounter_id) where is_primary and status='active';
+create unique index if not exists care_team_unique_active_role_idx on public.encounter_care_team(encounter_id,doctor_id,role) where status='active';
 
 alter table public.diagnosis_catalog enable row level security;
 alter table public.encounter_care_team enable row level security;
@@ -181,7 +181,11 @@ select e.facility_id,e.id encounter_id,e.patient_id,e.encounter_no,e.encounter_t
  jsonb_build_object('age_years',extract(year from age(e.service_date,p.birth_date)),'sex_at_birth',p.sex_at_birth) patient_context,
  coalesce((select jsonb_agg(jsonb_build_object('code',d.code,'description',d.description,'classification',d.classification,'verification',d.verification_status,'status',d.clinical_status,'present_on_admission',d.present_on_admission,'comorbidity',d.is_comorbidity,'complication',d.is_complication) order by d.created_at) from public.diagnoses d where d.encounter_id=e.id),'[]'::jsonb) diagnoses,
  coalesce((select jsonb_agg(jsonb_build_object('role',c.role,'primary',c.is_primary,'doctor_id',c.doctor_id) order by c.assigned_from) from public.encounter_care_team c where c.encounter_id=e.id and c.status='active'),'[]'::jsonb) care_team,
- coalesce((select jsonb_agg(jsonb_build_object('code',v.code,'value',v.value,'unit',v.unit,'observed_at',v.observed_at) order by v.observed_at desc) from public.vital_observations v where v.encounter_id=e.id),'[]'::jsonb) vital_signs
+ coalesce((select jsonb_agg(jsonb_build_object('code',v.code,'value',v.value,'unit',v.unit,'observed_at',v.observed_at) order by v.observed_at desc) from public.vital_observations v where v.encounter_id=e.id),'[]'::jsonb) vital_signs,
+ coalesce((select jsonb_agg(jsonb_build_object('substance',a.substance,'reaction',a.reaction,'severity',a.severity)) from public.allergies a where a.patient_id=e.patient_id and a.status='active'),'[]'::jsonb) active_allergies,
+ coalesce((select jsonb_agg(jsonb_build_object('order_no',o.order_no,'type',o.order_type,'priority',o.priority,'status',o.status,'item',oi.description,'item_status',oi.status,'result',(select jsonb_build_object('status',r.status,'text',r.result_text,'data',r.result_data,'validated_at',r.validated_at) from public.clinical_results r where r.order_item_id=oi.id order by r.entered_at desc limit 1)) order by o.ordered_at desc) from public.clinical_orders o join public.order_items oi on oi.order_id=o.id where o.encounter_id=e.id),'[]'::jsonb) orders_and_results,
+ coalesce((select jsonb_agg(jsonb_build_object('prescription_no',rx.prescription_no,'status',rx.status,'medicine',pr.name,'dose',pi.dose,'route',pi.route,'frequency',pi.frequency,'duration',pi.duration,'instructions',pi.instructions) order by rx.prescribed_at desc) from public.prescriptions rx join public.prescription_items pi on pi.prescription_id=rx.id join public.products pr on pr.id=pi.product_id where rx.encounter_id=e.id),'[]'::jsonb) medications,
+ (select jsonb_build_object('final_diagnosis',ds.final_diagnosis,'condition',ds.condition_at_discharge,'instructions',ds.instructions,'follow_up',ds.follow_up_plan,'medications',ds.discharge_medications,'completed_at',ds.completed_at) from public.admissions ad join public.discharge_summaries ds on ds.admission_id=ad.id where ad.encounter_id=e.id limit 1) discharge_summary
 from public.encounters e join public.patients p on p.id=e.patient_id;
 
 grant select on public.diagnosis_catalog,public.encounter_care_team,public.disease_census,public.clinical_ai_patient_context to authenticated;
