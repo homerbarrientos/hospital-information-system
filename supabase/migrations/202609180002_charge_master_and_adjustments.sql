@@ -197,7 +197,7 @@ create or replace view public.billing_daily_summary with(security_invoker=true) 
 select a.facility_id,le.posted_at::date business_date,
  coalesce(sum(le.amount) filter(where le.kind in('charge','adjustment') and le.amount>0),0) charges,
  coalesce(abs(sum(le.amount) filter(where le.kind='payment')),0) collections,
- coalesce(abs(sum(le.amount) filter(where le.kind in('discount','reversal') or (le.kind='adjustment' and le.amount<0)),0) adjustments_and_discounts,
+ coalesce(abs(sum(le.amount) filter(where le.kind in('discount','reversal') or (le.kind='adjustment' and le.amount<0))),0) adjustments_and_discounts,
  count(*) transaction_count
 from public.ledger_entries le join public.patient_accounts a on a.id=le.account_id group by a.facility_id,le.posted_at::date;
 
