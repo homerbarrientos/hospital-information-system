@@ -6,6 +6,11 @@ insert into public.privileges(code,description,risk_level) values
  ('cashier.shift','Open and reconcile cashier shifts','high_risk')
 on conflict(code) do update set description=excluded.description,risk_level=excluded.risk_level;
 
+insert into public.role_privileges(role_id,privilege_code)
+select r.id,p.code from public.roles r join public.organizations o on o.id=r.organization_id cross join public.privileges p
+where o.code='INF' and r.name='Hospital Administrator' and p.code in('billing.post','billing.reverse','cashier.shift')
+on conflict do nothing;
+
 insert into public.reference_groups(organization_id,code,name,description)
 select o.id,'payment_method','Payment methods','Methods accepted by the cashier' from public.organizations o
 on conflict(organization_id,code) do nothing;
@@ -19,15 +24,19 @@ create index if not exists payments_account_posted_idx on public.payments(accoun
 create unique index if not exists one_open_shift_per_cashier on public.cashier_shifts(facility_id,cashier_id) where status='open';
 create sequence if not exists public.official_receipt_seq start 1;
 
+drop policy if exists "assigned ledger read" on public.ledger_entries;
 create policy "assigned ledger read" on public.ledger_entries for select using(exists(select 1 from public.patient_accounts a where a.id=ledger_entries.account_id and public.user_has_facility(a.facility_id)));
+drop policy if exists "assigned payment read" on public.payments;
 create policy "assigned payment read" on public.payments for select using(exists(select 1 from public.patient_accounts a where a.id=payments.account_id and public.user_has_facility(a.facility_id)));
+drop policy if exists "assigned payment group read" on public.reference_groups;
 create policy "assigned payment group read" on public.reference_groups for select using(code='payment_method' and exists(select 1 from public.facilities f where f.organization_id=reference_groups.organization_id and public.user_has_facility(f.id)));
+drop policy if exists "assigned payment option read" on public.reference_options;
 create policy "assigned payment option read" on public.reference_options for select using(exists(select 1 from public.reference_groups g join public.facilities f on f.organization_id=g.organization_id where g.id=reference_options.group_id and g.code='payment_method' and public.user_has_facility(f.id)));
 
 create or replace function public.open_cashier_shift(target_facility uuid,opening_cash numeric) returns uuid language plpgsql security definer set search_path='' as $$
 declare result uuid;
 begin
- if auth.uid() is null or not public.user_has_facility(target_facility) then raise exception 'Facility access denied';end if;
+ if auth.uid() is null or not public.has_privilege('cashier.shift',target_facility) then raise exception 'Not authorized for cashier shift operations';end if;
  if opening_cash is null or opening_cash<0 then raise exception 'Opening cash cannot be negative';end if;
  if exists(select 1 from public.cashier_shifts where facility_id=target_facility and cashier_id=auth.uid() and status='open') then raise exception 'You already have an open cashier shift';end if;
  insert into public.cashier_shifts(facility_id,cashier_id,opening_amount,status) values(target_facility,auth.uid(),opening_cash,'open') returning id into result;
@@ -39,7 +48,7 @@ create or replace function public.close_cashier_shift(target_shift uuid,actual_c
 declare s public.cashier_shifts%rowtype; expected numeric;
 begin
  select * into s from public.cashier_shifts where id=target_shift for update;
- if not found or auth.uid() is null or s.cashier_id<>auth.uid() or not public.user_has_facility(s.facility_id) then raise exception 'Open cashier shift not found';end if;
+ if not found or auth.uid() is null or s.cashier_id<>auth.uid() or not public.has_privilege('cashier.shift',s.facility_id) then raise exception 'Open cashier shift not found or not authorized';end if;
  if s.status<>'open' then raise exception 'Cashier shift is already closed';end if;if actual_cash is null or actual_cash<0 then raise exception 'Actual cash cannot be negative';end if;
  select s.opening_amount+coalesce(sum(p.amount),0) into expected from public.payments p where p.shift_id=s.id and p.status='posted' and p.payment_method='cash';
  update public.cashier_shifts set closed_at=now(),expected_amount=expected,actual_amount=actual_cash,status='closed' where id=s.id;
@@ -50,7 +59,7 @@ end$$;
 create or replace function public.post_patient_charge(target_facility uuid,target_encounter uuid,charge_description text,charge_amount numeric) returns uuid language plpgsql security definer set search_path='' as $$
 declare e public.encounters%rowtype; account uuid; result uuid;
 begin
- if auth.uid() is null or not public.user_has_facility(target_facility) then raise exception 'Facility access denied';end if;
+ if auth.uid() is null or not public.has_privilege('billing.post',target_facility) then raise exception 'Not authorized to post patient charges';end if;
  if charge_amount is null or charge_amount<=0 or length(trim(coalesce(charge_description,'')))<2 then raise exception 'Valid charge description and amount are required';end if;
  select * into e from public.encounters where id=target_encounter and facility_id=target_facility;if not found then raise exception 'Encounter not found';end if;
  insert into public.patient_accounts(patient_id,facility_id) values(e.patient_id,target_facility) on conflict(facility_id,patient_id) do update set patient_id=excluded.patient_id returning id into account;
@@ -61,7 +70,7 @@ end$$;
 create or replace function public.post_patient_payment(target_facility uuid,target_patient uuid,payment_amount numeric,method_code text,external_ref text) returns text language plpgsql security definer set search_path='' as $$
 declare shift_id uuid;account uuid;payment_id uuid;receipt text;remaining numeric;row record;allocated numeric;
 begin
- if auth.uid() is null or not public.user_has_facility(target_facility) then raise exception 'Facility access denied';end if;if payment_amount is null or payment_amount<=0 then raise exception 'Payment must be positive';end if;
+ if auth.uid() is null or not public.has_privilege('billing.post',target_facility) then raise exception 'Not authorized to post patient payments';end if;if payment_amount is null or payment_amount<=0 then raise exception 'Payment must be positive';end if;
  if not exists(select 1 from public.reference_options o join public.reference_groups g on g.id=o.group_id join public.facilities f on f.organization_id=g.organization_id where f.id=target_facility and g.code='payment_method' and o.code=method_code and o.active) then raise exception 'Invalid payment method';end if;
  select id into shift_id from public.cashier_shifts where facility_id=target_facility and cashier_id=auth.uid() and status='open' for update;if not found then raise exception 'Open cashier shift required';end if;
  insert into public.patient_accounts(patient_id,facility_id) values(target_patient,target_facility) on conflict(facility_id,patient_id) do update set patient_id=excluded.patient_id returning id into account;
@@ -79,7 +88,7 @@ begin
  if length(trim(coalesce(reversal_reason,'')))<5 then raise exception 'Reversal reason must contain at least five characters';end if;
  select l.* into original from public.ledger_entries l where l.id=target_entry for update;
  select a.facility_id into facility from public.patient_accounts a where a.id=original.account_id;
- if not found or auth.uid() is null or not public.user_has_facility(facility) then raise exception 'Ledger entry not found';end if;
+ if not found or auth.uid() is null or not public.has_privilege('billing.reverse',facility) then raise exception 'Ledger entry not found or not authorized';end if;
  if original.kind not in('charge','adjustment') then raise exception 'Only charge or adjustment entries can be reversed';end if;if exists(select 1 from public.ledger_entries where reverses_entry_id=original.id) then raise exception 'Ledger entry has already been reversed';end if;
  insert into public.ledger_entries(account_id,encounter_id,kind,source_type,source_id,description,amount,currency,reverses_entry_id,posted_by,reason,idempotency_key) values(original.account_id,original.encounter_id,'reversal','ledger_reversal',original.id,'Reversal: '||original.description,-original.amount,original.currency,original.id,auth.uid(),trim(reversal_reason),'reversal-'||original.id) returning id into result;
  insert into public.audit_events(facility_id,actor_id,event_type,object_type,object_id,reason,details) values(facility,auth.uid(),'billing.entry_reversed','ledger_entry',result,trim(reversal_reason),jsonb_build_object('reversed_entry_id',original.id));return result;
