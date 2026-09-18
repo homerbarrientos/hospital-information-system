@@ -68,13 +68,13 @@ create table if not exists public.billing_adjustment_requests(
  decided_by uuid references public.profiles,
  decided_at timestamptz,
  decision_reason text,
- posted_adjustment_id uuid references public.ledger_entries,
- unique(ledger_entry_id,status)
+ posted_adjustment_id uuid references public.ledger_entries
 );
 
 create index if not exists service_prices_active_lookup_idx on public.service_prices(facility_id,service_id,effective_from desc) where effective_to is null;
 create index if not exists doctor_fee_active_lookup_idx on public.doctor_fee_schedules(facility_id,doctor_id,service_id,encounter_type,room_type,effective_from desc) where active;
 create index if not exists billing_adjustment_status_idx on public.billing_adjustment_requests(facility_id,status,requested_at desc);
+create unique index if not exists billing_adjustment_one_pending_idx on public.billing_adjustment_requests(ledger_entry_id) where status='pending';
 
 alter table public.doctor_fee_schedules enable row level security;
 alter table public.billing_adjustment_requests enable row level security;
@@ -132,7 +132,7 @@ end$$;
 
 create or replace function public.request_charge_adjustment(target_entry uuid,proposed_price numeric,adjustment_reason text,attachment text)
 returns uuid language plpgsql security definer set search_path='' as $$
-declare fac uuid;org uuid;original public.ledger_entries%rowtype;rid uuid;needs_approval boolean;min_price numeric;max_price numeric;
+declare fac uuid;org uuid;original public.ledger_entries%rowtype;rid uuid;override_allowed boolean;
 begin
  select le.* into original from public.ledger_entries le join public.patient_accounts a on a.id=le.account_id where le.id=target_entry and le.kind in('charge','adjustment') and le.amount>0 for update of le;
  if not found then raise exception 'Charge not found';end if;
@@ -140,10 +140,10 @@ begin
  if fac is null or not public.has_privilege('billing.adjust.request',fac) then raise exception 'Charge not found or not authorized';end if;
  if exists(select 1 from public.payment_allocations where ledger_entry_id=target_entry) then raise exception 'Allocated charges require a controlled refund workflow';end if;
  if coalesce(proposed_price,-1)<0 or length(trim(coalesce(adjustment_reason,'')))<5 then raise exception 'Proposed price and reason are required';end if;
- select coalesce(s.requires_override_approval,true),sp.minimum_amount,sp.maximum_amount into needs_approval,min_price,max_price from public.service_catalog s left join public.service_prices sp on sp.service_id=s.id and sp.facility_id=fac and sp.effective_to is null where s.id=original.source_id;
- if min_price is not null and proposed_price<min_price then needs_approval:=true;end if;if max_price is not null and proposed_price>max_price then needs_approval:=true;end if;
+ select s.allow_price_override into override_allowed from public.service_catalog s where s.id=original.source_id;
+ if override_allowed is false then raise exception 'This charge does not allow a price override';end if;
  insert into public.billing_adjustment_requests(facility_id,ledger_entry_id,original_amount,proposed_amount,reason,attachment_path,requested_by,status)
- values(fac,target_entry,original.amount,proposed_price,trim(adjustment_reason),nullif(trim(attachment),''),auth.uid(),case when needs_approval then 'pending' else 'approved' end) returning id into rid;
+ values(fac,target_entry,original.amount,proposed_price,trim(adjustment_reason),nullif(trim(attachment),''),auth.uid(),'pending') returning id into rid;
  insert into public.audit_events(organization_id,facility_id,actor_id,event_type,object_type,object_id,reason,details) values(org,fac,auth.uid(),'billing.adjustment_requested','billing_adjustment',rid,trim(adjustment_reason),jsonb_build_object('ledger_entry_id',target_entry,'original_amount',original.amount,'proposed_amount',proposed_price));return rid;
 end$$;
 
