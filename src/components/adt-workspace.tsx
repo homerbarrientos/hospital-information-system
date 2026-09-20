@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { ArrowRightLeft, DoorOpen, ExternalLink, Eye, FilePlus2, FileUp, Pencil, Plus, Trash2, X } from "lucide-react";
+import { formatDateTime } from "@/lib/format";
 import {
   addDischargeAttachment,
   admitPatient,
@@ -54,7 +55,7 @@ export function AdtWorkspace({
             const patient = patients.find((item) => item.id === encounter?.patient_id);
             const stay = stays.find((item) => item.admission_id === admission.id && !item.ended_at);
             return <tr key={admission.id}>
-              <td className="name-cell"><strong>{admission.admission_no}</strong><span>{new Date(admission.admitted_at).toLocaleString()}</span></td>
+              <td className="name-cell"><strong>{admission.admission_no}</strong><span>{formatDateTime(admission.admitted_at)}</span></td>
               <td>{patient ? `${patient.last_name}, ${patient.first_name} · ${patient.mrn}` : "Patient"}</td>
               <td>{doctorLabel(doctors.find(doctor=>doctor.id===admission.attending_doctor_id))}</td>
               <td>{stay ? bedLabel(stay.bed_id) : "Discharged"}</td>
@@ -196,13 +197,13 @@ function PatientChartDialog({ admissionId, close }: { admissionId: string; close
           <ChartSection title="Orders and results">{chart.orders.length ? <ul>{chart.orders.map((order, index) => <li key={index}><strong>{order.number} · {order.type}</strong><span>{order.status}</span><p>{order.items.join(", ") || "No items"}{order.results.length ? ` — Results: ${order.results.join(", ")}` : ""}</p></li>)}</ul> : <EmptyRecord/>}</ChartSection>
           <ChartSection title="Medications">{chart.medications.length ? <ul>{chart.medications.map((medication, index) => <li key={index}><strong>{medication.number}</strong><span>{medication.status}</span><p>{medication.items.join("; ") || "No medicine items"}</p></li>)}</ul> : <EmptyRecord/>}</ChartSection>
         </div>
-        <ChartSection title="Bed movement history">{chart.movements.length ? <ul>{chart.movements.map((movement, index) => <li key={index}><strong>{movement.location}</strong><span>{new Date(movement.startedAt).toLocaleString()} to {movement.endedAt ? new Date(movement.endedAt).toLocaleString() : "present"}</span>{movement.reason && <p>{movement.reason}</p>}</li>)}</ul> : <EmptyRecord/>}</ChartSection>
+        <ChartSection title="Bed movement history">{chart.movements.length ? <ul>{chart.movements.map((movement, index) => <li key={index}><strong>{movement.location}</strong><span>{formatDateTime(movement.startedAt)} to {movement.endedAt ? formatDateTime(movement.endedAt) : "present"}</span>{movement.reason && <p>{movement.reason}</p>}</li>)}</ul> : <EmptyRecord/>}</ChartSection>
         {chart.dischargeSummary && <>
           <ChartSection title="Discharge summary"><div className="chart-summary"><p><b>Final diagnosis:</b> {chart.dischargeSummary.finalDiagnosis}</p><p><b>Condition:</b> {chart.dischargeSummary.condition}</p><p><b>Instructions:</b> {chart.dischargeSummary.instructions}</p><p><b>Follow-up:</b> {chart.dischargeSummary.followUp || "Not recorded"}</p><p><b>Medications:</b> {chart.dischargeSummary.medications || "Not recorded"}</p></div></ChartSection>
           <ChartSection title="Supporting documents">
             <div className="attachment-toolbar"><p>Private discharge attachments with an audited history.</p><button className="btn btn-primary" onClick={() => setDocumentAction({ mode: "add" })}><FilePlus2 size={15}/>Add attachment</button></div>
             {chart.attachments.length ? <div className="attachment-list">{chart.attachments.map((file) => <article key={file.id} className="attachment-card">
-              <div><strong>{file.name}</strong><span>{file.description || "No description"} · {(file.sizeBytes / 1024).toFixed(0)} KB · {new Date(file.uploadedAt).toLocaleString()}</span></div>
+              <div><strong>{file.name}</strong><span>{file.description || "No description"} · {(file.sizeBytes / 1024).toFixed(0)} KB · {formatDateTime(file.uploadedAt)}</span></div>
               <div className="attachment-actions">
                 <a className="btn adt-view-btn" href={file.url} target="_blank" rel="noreferrer"><ExternalLink size={14}/>View</a>
                 <button className="btn adt-view-btn" onClick={() => setDocumentAction({ mode: "edit", attachment: file })}><Pencil size={14}/>Edit</button>
