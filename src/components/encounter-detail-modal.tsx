@@ -3,6 +3,7 @@
 import { useActionState, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilePenLine, X } from "lucide-react";
+import { formatDateTime } from "@/lib/format";
 import {
   amendConsultation,
   cancelEncounter,
@@ -387,7 +388,7 @@ export function EncounterDetailModal({
               <summary>Modification history ({detail.versions.length})</summary>
               {detail.versions.map((version) => (
                 <div key={version.version}>
-                  Version {version.version} · {new Date(version.created_at).toLocaleString()}{" "}
+                  Version {version.version} · {formatDateTime(version.created_at)}{" "}
                   {version.amendment_reason && `· ${version.amendment_reason}`}
                 </div>
               ))}
