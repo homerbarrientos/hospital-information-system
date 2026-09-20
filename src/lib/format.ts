@@ -1,10 +1,10 @@
-const TZ="Asia/Manila";
-const phDateTime=new Intl.DateTimeFormat("en-PH",{dateStyle:"medium",timeStyle:"short",timeZone:TZ});
-const phDate=new Intl.DateTimeFormat("en-PH",{dateStyle:"medium",timeZone:TZ});
-const shortUtcDate=new Intl.DateTimeFormat("en-PH",{month:"short",day:"numeric",timeZone:"UTC"});
+const PH_OFFSET_MS=8*60*60*1000;
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const pad=(value:number)=>String(value).padStart(2,"0");
+const philippineParts=(value:string|Date)=>{const date=new Date(new Date(value).getTime()+PH_OFFSET_MS);return{year:date.getUTCFullYear(),month:date.getUTCMonth(),day:date.getUTCDate(),hour:date.getUTCHours(),minute:date.getUTCMinutes()}};
 
-export const formatDateTime=(value:string|Date)=>phDateTime.format(new Date(value));
-export const formatDate=(value:string|Date)=>phDate.format(new Date(value));
-export const formatDateOnly=(value:string)=>shortUtcDate.format(new Date(`${value}T00:00:00Z`));
+export const formatDateTime=(value:string|Date)=>{const part=philippineParts(value),hour=part.hour%12||12;return `${MONTHS[part.month]} ${part.day}, ${part.year}, ${hour}:${pad(part.minute)} ${part.hour<12?"AM":"PM"}`};
+export const formatDate=(value:string|Date)=>{const part=philippineParts(value);return `${MONTHS[part.month]} ${part.day}, ${part.year}`};
+export const formatDateOnly=(value:string)=>{const [,month,day]=value.split("-").map(Number);return `${MONTHS[month-1]} ${day}`};
 export const formatPhilippineDateTime=formatDateTime;
-export function philippineDateKey(value:string|Date=new Date()){const parts=new Intl.DateTimeFormat("en-US",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:TZ}).formatToParts(new Date(value));const get=(type:Intl.DateTimeFormatPartTypes)=>parts.find(part=>part.type===type)?.value||"";return `${get("year")}-${get("month")}-${get("day")}`}
+export function philippineDateKey(value:string|Date=new Date()){const part=philippineParts(value);return `${part.year}-${pad(part.month+1)}-${pad(part.day)}`}
