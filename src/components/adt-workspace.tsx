@@ -25,14 +25,15 @@ type Admission = { id: string; encounter_id: string; admission_no: string; statu
 type Doctor={id:string;first_name:string;last_name:string;suffix:string|null;specialty:string};
 type ReferenceOption={code:string;label:string};
 type Stay = { admission_id: string; bed_id: string; ended_at: string | null };
+type BillingCase={admission_id:string|null;status:string;final_balance:number};
 const initialState: AdtState = { ok: false, message: "" };
 const doctorLabel=(doctor?:Doctor)=>doctor?`Dr. ${doctor.last_name}, ${doctor.first_name}${doctor.suffix?` ${doctor.suffix}`:""}`:"Not assigned";
 
 export function AdtWorkspace({
-  patients, beds, wards, rooms, encounters, admissions, stays, facilityId, doctors, dispositions,
+  patients, beds, wards, rooms, encounters, admissions, stays, facilityId, doctors, dispositions, billingCases,
 }: {
   patients: Patient[]; beds: Bed[]; wards: Ward[]; rooms:Room[]; encounters: Encounter[];
-  admissions: Admission[]; stays: Stay[]; facilityId: string; doctors:Doctor[];dispositions:ReferenceOption[];
+  admissions: Admission[]; stays: Stay[]; facilityId: string; doctors:Doctor[];dispositions:ReferenceOption[];billingCases:BillingCase[];
 }) {
   const [open, setOpen] = useState(false);
   const available = beds.filter((bed) => bed.status === "available");
@@ -54,13 +55,14 @@ export function AdtWorkspace({
             const encounter = encounters.find((item) => item.id === admission.encounter_id);
             const patient = patients.find((item) => item.id === encounter?.patient_id);
             const stay = stays.find((item) => item.admission_id === admission.id && !item.ended_at);
+            const billingCase=billingCases.find(item=>item.admission_id===admission.id);
             return <tr key={admission.id}>
               <td className="name-cell"><strong>{admission.admission_no}</strong><span>{formatDateTime(admission.admitted_at)}</span></td>
               <td>{patient ? `${patient.last_name}, ${patient.first_name} · ${patient.mrn}` : "Patient"}</td>
               <td>{doctorLabel(doctors.find(doctor=>doctor.id===admission.attending_doctor_id))}</td>
               <td>{stay ? bedLabel(stay.bed_id) : "Discharged"}</td>
               <td><span className={`badge ${admission.status === "discharged" ? "blue" : "green"}`}>{admission.status}</span></td>
-              <td><AdmissionActions admission={admission} patient={patient} availableBeds={available} bedLabel={bedLabel} doctors={doctors} dispositions={dispositions}/></td>
+              <td><AdmissionActions admission={admission} patient={patient} availableBeds={available} bedLabel={bedLabel} doctors={doctors} dispositions={dispositions} billingCase={billingCase}/></td>
             </tr>;
           })}
           {!admissions.length && <tr><td colSpan={6} className="empty-state">No admissions recorded.</td></tr>}
@@ -72,9 +74,9 @@ export function AdtWorkspace({
 }
 
 function AdmissionActions({
-  admission, patient, availableBeds, bedLabel, doctors, dispositions,
+  admission, patient, availableBeds, bedLabel, doctors, dispositions, billingCase,
 }: {
-  admission: Admission; patient?: Patient; availableBeds: Bed[]; bedLabel: (bedId: string) => string; doctors:Doctor[];dispositions:ReferenceOption[];
+  admission: Admission; patient?: Patient; availableBeds: Bed[]; bedLabel: (bedId: string) => string; doctors:Doctor[];dispositions:ReferenceOption[];billingCase?:BillingCase;
 }) {
   const [transferOpen, setTransferOpen] = useState(false);
   const [dischargeOpen, setDischargeOpen] = useState(false);
@@ -86,7 +88,7 @@ function AdmissionActions({
       <button className="btn adt-view-btn" onClick={() => setChartOpen(true)}><Eye size={15}/>View chart</button>
       {active && <>
         <button className="btn adt-transfer-btn" onClick={() => setTransferOpen(true)}><ArrowRightLeft size={15}/>Transfer</button>
-        <button className="btn adt-discharge-btn" onClick={() => setDischargeOpen(true)}><DoorOpen size={15}/>Prepare discharge</button>
+        <button className="btn adt-discharge-btn" disabled={billingCase?.status!=="cleared"} title={billingCase?.status==="cleared"?"Billing cleared":"Finalize payment and clear the billing case first"} onClick={() => setDischargeOpen(true)}><DoorOpen size={15}/>{billingCase?.status==="cleared"?"Prepare discharge":"Await billing clearance"}</button>
       </>}
     </div>
     {transferOpen && <TransferDialog admissionId={admission.id} admissionNumber={admission.admission_no} patientName={patientName} availableBeds={availableBeds} bedLabel={bedLabel} close={() => setTransferOpen(false)}/>}
