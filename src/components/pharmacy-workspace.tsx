@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { CheckCircle2, ChevronRight, FilePenLine, FilePlus2, Paperclip, Pill, Plus, Trash2, X } from "lucide-react";
+import { formatDateTime } from "@/lib/format";
 import {
   addPrescriptionAttachment, amendPrescription, cancelPrescription, createPrescription,
   dispenseMedication, removePrescriptionAttachment, updatePrescriptionAttachment,
@@ -43,7 +44,7 @@ export function PharmacyWorkspace({ prescriptions, encounters, patients, items, 
       ]} searchPlaceholder="Patient name or MRN" dateLabel="Prescription date"/>
       <div className="table-wrap list-table-scroll"><table className="data-table pharmacy-table"><thead><tr><th>Prescription</th><th>Patient / Encounter</th><th>Prescribing doctor</th><th>Medicines</th><th>Status</th><th>Action</th></tr></thead>
         <tbody>{prescriptions.map(prescription=>{const encounter=encounterFor(prescription);const patient=patientFor(prescription);const prescriptionItems=items.filter(item=>item.prescription_id===prescription.id);return <tr key={prescription.id}>
-          <td className="name-cell"><strong>{prescription.prescription_no}</strong><span>{new Date(prescription.prescribed_at).toLocaleString()} · v{prescription.version}</span></td>
+          <td className="name-cell"><strong>{prescription.prescription_no}</strong><span>{formatDateTime(prescription.prescribed_at)} · v{prescription.version}</span></td>
           <td className="name-cell"><strong>{patient?`${patient.last_name}, ${patient.first_name}`:"Patient"}</strong><span>{patient?.mrn} · {encounter?.encounter_no}</span></td>
           <td>{doctorLabel(doctors.find(doctor=>doctor.id===prescription.prescribing_doctor_id))}</td>
           <td>{prescriptionItems.map(item=>products.find(product=>product.id===item.product_id)?.name||"Medicine").join(", ")||"No medicines"}</td>
