@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Beaker, ChevronRight, ClipboardList, FilePenLine, Plus, Trash2, X } from "lucide-react";
+import { formatDateTime } from "@/lib/format";
 import {
   advanceOrder,
   amendOrder,
@@ -157,7 +158,7 @@ function OrderItemResult({ item, results, orderStatus }: { item: Item; results: 
   const locked = ["released", "cancelled"].includes(orderStatus);
   return <article className="order-result-card">
     <header><div><strong>{item.description}</strong><span>{item.status.replaceAll("_", " ")}</span></div><span className="badge blue">{item.charge_on === "none" ? "No charge" : `Charge: ${item.charge_on}`}</span></header>
-    {current && <div className="saved-result"><span>{current.status} result · {new Date(current.entered_at).toLocaleString()}</span><p>{current.result_text}</p>{current.correction_reason && <small>Correction: {current.correction_reason}</small>}</div>}
+    {current && <div className="saved-result"><span>{current.status} result · {formatDateTime(current.entered_at)}</span><p>{current.result_text}</p>{current.correction_reason && <small>Correction: {current.correction_reason}</small>}</div>}
     {!locked && <form action={action} className="result-form">
       <input type="hidden" name="item_id" value={item.id}/><input type="hidden" name="has_final" value={results.some((result) => result.status === "final") ? "true" : "false"}/>
       <label>Result / finding<textarea required minLength={2} maxLength={5000} rows={6} name="result_text" defaultValue={current?.result_text || ""} placeholder="Enter the clinical result or diagnostic finding"/></label>
