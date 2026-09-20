@@ -11,9 +11,11 @@ with configured(service_code,amount) as(values
 )
 insert into public.service_prices(service_id,facility_id,amount,effective_from)
 select s.id,f.id,c.amount,current_date
-from configured c join public.service_catalog s on s.code=c.service_code
+from configured c
+join public.service_catalog s on s.code=c.service_code
 join public.facilities f on f.organization_id=s.organization_id
-where f.code='INF-001' and not exists(
+join public.organizations o on o.id=f.organization_id
+where o.code='INF' and f.status='active' and not exists(
  select 1 from public.service_prices p where p.service_id=s.id and p.facility_id=f.id
  and p.effective_from<=current_date and(p.effective_to is null or p.effective_to>=current_date)
 );
