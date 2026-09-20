@@ -1,0 +1,35 @@
+/* Hospital ONE — Apple-inspired shared interface layer */
+:root{
+  --ink:#172033;--navy:#101828;--muted:#667085;--line:#e4e7ec;
+  --teal:#008f83;--teal-dark:#00756c;--teal-soft:#e8f7f5;
+  --canvas:#f5f7fa;--danger:#d92d4c;--ios-blue:#0877ee;
+  --surface:rgba(255,255,255,.92);--surface-solid:#fff;
+  --shadow-sm:0 1px 2px rgba(16,24,40,.04),0 2px 8px rgba(16,24,40,.04);
+  --shadow-md:0 12px 32px rgba(16,24,40,.10),0 2px 8px rgba(16,24,40,.05);
+  --radius-card:18px;--radius-control:12px;
+}
+html{background:var(--canvas)}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",sans-serif;background:radial-gradient(circle at 82% -10%,#e8f7f5 0,transparent 30%),var(--canvas);letter-spacing:-.006em}
+.app-shell{grid-template-columns:244px minmax(0,1fr)}
+.sidebar{background:linear-gradient(180deg,rgba(14,42,62,.98),rgba(8,31,47,.99));padding:22px 14px;border-right:1px solid rgba(255,255,255,.08);box-shadow:8px 0 28px rgba(16,24,40,.08)}
+.brand{padding:2px 10px 22px;border-radius:14px;transition:background .18s ease,transform .18s ease}.brand:hover{background:rgba(255,255,255,.07);opacity:1;transform:translateY(-1px)}
+.brand-mark{width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,#28c3b5,#058b81);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 20px rgba(0,0,0,.18)}
+.brand h1{font-size:17px;letter-spacing:-.02em}.brand p{font-size:10px;color:#a9c7d4}
+.nav-label{margin:13px 11px 7px;font-size:9px;letter-spacing:.16em;color:#86a7b7}
+.nav-list{gap:3px}.nav-item{min-height:39px;padding:10px 12px;border-radius:11px;font-size:12px;transition:background .16s ease,transform .16s ease,color .16s ease}.nav-item:hover{background:rgba(255,255,255,.08);transform:translateX(2px)}.nav-item.active{background:linear-gradient(135deg,#149d92,#087d75);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 18px rgba(0,0,0,.16)}
+.profile-card{margin:16px 4px 0;padding:15px 8px 0}.avatar{background:linear-gradient(145deg,#fff,#d9eeeb);box-shadow:0 3px 10px rgba(0,0,0,.15)}
+.topbar{height:72px;background:rgba(255,255,255,.78);border-bottom:1px solid rgba(209,213,219,.72);backdrop-filter:saturate(170%) blur(18px);-webkit-backdrop-filter:saturate(170%) blur(18px);box-shadow:0 1px 0 rgba(255,255,255,.7)}
+.facility strong{font-size:13px;letter-spacing:-.01em}.facility span{font-size:10px}.content{padding:30px;max-width:1540px}
+.page-heading{margin-bottom:25px}.page-heading h2,h2{font-size:29px;font-weight:700;letter-spacing:-.04em}.eyebrow{font-size:10px;letter-spacing:.15em}.subtext{font-size:12px;line-height:1.55;max-width:760px}
+.icon-btn{width:39px;height:39px;border-radius:12px;border:1px solid rgba(208,213,221,.85);background:rgba(255,255,255,.88);box-shadow:var(--shadow-sm);transition:transform .15s ease,box-shadow .15s ease,background .15s ease}.icon-btn:hover{background:#fff;box-shadow:0 5px 14px rgba(16,24,40,.10);transform:translateY(-1px)}
+.btn{min-height:40px;border-radius:11px;padding:0 16px;font-size:11px;letter-spacing:-.005em;transition:transform .15s ease,box-shadow .15s ease,filter .15s ease}.btn:hover{transform:translateY(-1px)}.btn-primary{background:linear-gradient(180deg,#0c9b90,#07857c);box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 6px 16px rgba(7,133,124,.22)}.btn-primary:hover{filter:brightness(.96);box-shadow:0 9px 20px rgba(7,133,124,.25)}.btn-secondary{border-color:#d7dce2;background:rgba(255,255,255,.9);box-shadow:var(--shadow-sm)}
+.card,.quick-card,.metric{border:1px solid rgba(218,223,230,.82);border-radius:var(--radius-card);background:var(--surface);box-shadow:var(--shadow-sm);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.card{overflow:hidden}.card-header{padding:17px 19px;border-bottom-color:#e9edf1}.card-header h3{font-size:14px;letter-spacing:-.015em}.quick-card{padding:18px;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.quick-card:hover{transform:translateY(-3px);border-color:#a9d8d3;box-shadow:var(--shadow-md)}.quick-card svg{padding:7px;width:34px;height:34px;border-radius:10px;background:var(--teal-soft)}.quick-card strong{margin:15px 0 6px;font-size:13px}.quick-card span{font-size:10.5px;line-height:1.55}.metric{padding:18px}.metric strong{font-size:26px;letter-spacing:-.04em}
+input,select,textarea,.filter{border:1px solid #d7dce2!important;border-radius:var(--radius-control)!important;background:rgba(255,255,255,.94)!important;color:var(--ink);box-shadow:inset 0 1px 2px rgba(16,24,40,.025);transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}input:hover,select:hover,textarea:hover{border-color:#bfc7d1!important}input:focus,select:focus,textarea:focus{outline:none!important;border-color:#4cb7ae!important;box-shadow:0 0 0 4px rgba(12,155,144,.12)!important;background:#fff!important}textarea{resize:vertical}
+.table-wrap,.list-table-scroll,.billing-table-scroll{scrollbar-width:thin;scrollbar-color:#c5cbd3 transparent}.data-table th{padding:12px 15px;background:#f7f9fb;color:#667085;border-bottom-color:#e5e9ee;font-size:8.5px;letter-spacing:.1em;position:sticky;top:0;z-index:1}.data-table td{padding:14px 15px;border-bottom-color:#edf0f3}.data-table tbody tr:nth-child(even){background:rgba(247,249,251,.72)}.data-table tbody tr:hover{background:#eef8f7}.data-table tbody tr{transition:background .12s ease}
+.badge{padding:5px 9px;border-radius:999px;box-shadow:inset 0 0 0 1px rgba(16,24,40,.03)}
+.modal-backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}.modal{border:1px solid rgba(255,255,255,.82);border-radius:20px!important;background:rgba(255,255,255,.97);box-shadow:0 28px 80px rgba(15,23,42,.26),0 2px 10px rgba(15,23,42,.10);overflow:hidden}.modal-head{background:rgba(255,255,255,.9);border-bottom-color:#e7ebef!important}
+.notice{border-radius:14px;border-color:#bfe5df;background:rgba(238,250,248,.88);box-shadow:var(--shadow-sm)}
+.form-error{border-radius:12px!important}.form-success{border-radius:12px!important}
+@media(max-width:760px){.app-shell{display:block}.sidebar{border-right:0;box-shadow:0 7px 22px rgba(16,24,40,.12)}.topbar{height:64px}.content{padding:20px 14px}.page-heading h2,h2{font-size:25px}.card,.quick-card,.metric{border-radius:15px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
