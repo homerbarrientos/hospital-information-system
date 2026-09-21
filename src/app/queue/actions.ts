@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-export type QueueState={ok:boolean;message:string};export const queueInitial:QueueState={ok:false,message:""};const value=(form:FormData,name:string)=>String(form.get(name)||"").trim();
+export type QueueState={ok:boolean;message:string};const value=(form:FormData,name:string)=>String(form.get(name)||"").trim();
 export async function addWalkIn(_:QueueState,form:FormData):Promise<QueueState>{const reason=value(form,"reason");if(reason.length>500)return{ok:false,message:"Visit reason cannot exceed 500 characters."};const supabase=await createClient();const{error}=await supabase.rpc("create_walk_in",{target_facility:value(form,"facility_id"),target_patient:value(form,"patient_id"),target_department:value(form,"department_id"),visit_reason:reason,visit_priority:value(form,"priority")});if(error)return{ok:false,message:error.message};revalidatePath("/queue");return{ok:true,message:"Walk-in added to the live queue."}}
 export async function changeQueueStatus(_:QueueState,form:FormData):Promise<QueueState>{const supabase=await createClient();const{error}=await supabase.rpc("transition_queue",{target_queue:value(form,"queue_id"),next_status:value(form,"next_status")});if(error)return{ok:false,message:error.message};revalidatePath("/queue");return{ok:true,message:"Queue status updated."}}
