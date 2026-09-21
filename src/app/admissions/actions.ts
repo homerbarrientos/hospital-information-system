@@ -33,6 +33,7 @@ export type PatientChartResult =
 
 const value = (form: FormData, key: string) => String(form.get(key) || "").trim();
 const empty = Promise.resolve({ data: [] as Array<Record<string, unknown>> });
+const one = <T,>(item: T | T[]) => Array.isArray(item) ? item[0] : item;
 const textError = (label: string, text: string, minimum: number, maximum: number) => {
   if (text.length < minimum) return `${label} must contain at least ${minimum} characters.`;
   if (text.length > maximum) return `${label} cannot exceed ${maximum} characters.`;
@@ -209,44 +210,33 @@ export async function loadPatientChart(admissionId: string): Promise<PatientChar
   const supabase = await createClient();
   const { data: admission, error: admissionError } = await supabase
     .from("admissions")
-    .select("id,encounter_id,admission_no,status,admitted_at,discharged_at,discharge_disposition,admitting_doctor_id,attending_doctor_id")
+    .select("id,encounter_id,admission_no,status,admitted_at,discharged_at,discharge_disposition,admitting_doctor_id,attending_doctor_id,encounters!inner(patient_id,facility_id,patients!inner(mrn,first_name,middle_name,last_name,birth_date,sex_at_birth))")
     .eq("id", admissionId).single();
   if (admissionError || !admission) return { ok: false, message: admissionError?.message || "Admission not found." };
-  const { data: admissionEncounter, error: encounterError } = await supabase
-    .from("encounters").select("patient_id,facility_id").eq("id", admission.encounter_id).single();
-  if (encounterError || !admissionEncounter) return { ok: false, message: encounterError?.message || "Encounter not found." };
+  const admissionEncounter=one(admission.encounters);
+  const patient=admissionEncounter?one(admissionEncounter.patients):undefined;
+  if(!admissionEncounter||!patient)return{ok:false,message:"Patient record is unavailable."};
 
-  const [{ data: patient }, { data: encounters }, { data: allergies }, { data: stays }, { data: summary }] =
+  const [{ data: encounters }, { data: allergies }, { data: stays }, { data: summary }, { data: vitals }, { data: diagnoses }, { data: notes }, { data: orders }, { data: prescriptions }] =
     await Promise.all([
-      supabase.from("patients").select("mrn,first_name,middle_name,last_name,birth_date,sex_at_birth").eq("id", admissionEncounter.patient_id).single(),
       supabase.from("encounters").select("id,encounter_no,service_date").eq("patient_id", admissionEncounter.patient_id).eq("facility_id", admissionEncounter.facility_id).order("service_date", { ascending: false }),
       supabase.from("allergies").select("substance,reaction,severity").eq("patient_id", admissionEncounter.patient_id).eq("status", "active").order("recorded_at", { ascending: false }),
       supabase.from("bed_stays").select("bed_id,started_at,ended_at,transfer_reason").eq("admission_id", admissionId).order("started_at"),
       supabase.from("discharge_summaries").select("id,final_diagnosis,condition_at_discharge,instructions,follow_up_plan,discharge_medications,discharging_doctor_id").eq("admission_id", admissionId).maybeSingle(),
+      supabase.from("vital_observations").select("code,value,unit,observed_at,encounters!inner(patient_id,facility_id)").eq("encounters.patient_id",admissionEncounter.patient_id).eq("encounters.facility_id",admissionEncounter.facility_id).order("observed_at",{ascending:false}),
+      supabase.from("diagnoses").select("encounter_id,description,diagnosis_type,created_at,encounters!inner(patient_id,facility_id)").eq("encounters.patient_id",admissionEncounter.patient_id).eq("encounters.facility_id",admissionEncounter.facility_id).order("created_at",{ascending:false}),
+      supabase.from("clinical_notes").select("id,encounter_id,current_version,encounters!inner(patient_id,facility_id)").eq("encounters.patient_id",admissionEncounter.patient_id).eq("encounters.facility_id",admissionEncounter.facility_id).order("created_at",{ascending:false}),
+      supabase.from("clinical_orders").select("id,order_no,order_type,status,ordered_at,encounters!inner(patient_id,facility_id)").eq("encounters.patient_id",admissionEncounter.patient_id).eq("encounters.facility_id",admissionEncounter.facility_id).order("ordered_at",{ascending:false}),
+      supabase.from("prescriptions").select("id,prescription_no,status,prescribed_at,encounters!inner(patient_id,facility_id)").eq("encounters.patient_id",admissionEncounter.patient_id).eq("encounters.facility_id",admissionEncounter.facility_id).order("prescribed_at",{ascending:false}),
     ]);
-  if (!patient) return { ok: false, message: "Patient record is unavailable." };
 
   const encounterRows = encounters || [];
-  const encounterIds = encounterRows.map((item) => item.id);
-  const related = encounterIds.length
-    ? await Promise.all([
-        supabase.from("vital_observations").select("code,value,unit,observed_at").in("encounter_id", encounterIds).order("observed_at", { ascending: false }),
-        supabase.from("diagnoses").select("encounter_id,description,diagnosis_type,created_at").in("encounter_id", encounterIds).order("created_at", { ascending: false }),
-        supabase.from("clinical_notes").select("id,encounter_id,current_version").in("encounter_id", encounterIds).order("created_at", { ascending: false }),
-        supabase.from("clinical_orders").select("id,order_no,order_type,status,ordered_at").in("encounter_id", encounterIds).order("ordered_at", { ascending: false }),
-        supabase.from("prescriptions").select("id,prescription_no,status,prescribed_at").in("encounter_id", encounterIds).order("prescribed_at", { ascending: false }),
-      ])
-    : await Promise.all([empty, empty, empty, empty, empty]);
-  const vitals = related[0].data || [];
-  const diagnoses = related[1].data || [];
-  const notes = related[2].data || [];
-  const orders = related[3].data || [];
-  const prescriptions = related[4].data || [];
+  const vitalRows=vitals||[],diagnosisRows=diagnoses||[],noteRows=notes||[],orderRows=orders||[],prescriptionRows=prescriptions||[];
 
   const [noteVersionsResponse, orderItemsResponse, prescriptionItemsResponse, bedsResponse] = await Promise.all([
-    notes.length ? supabase.from("clinical_note_versions").select("note_id,version,content").in("note_id", notes.map((item) => item.id)) : empty,
-    orders.length ? supabase.from("order_items").select("id,order_id,description").in("order_id", orders.map((item) => item.id)) : empty,
-    prescriptions.length ? supabase.from("prescription_items").select("prescription_id,product_id,dose,route,frequency,duration,instructions").in("prescription_id", prescriptions.map((item) => item.id)) : empty,
+    noteRows.length ? supabase.from("clinical_note_versions").select("note_id,version,content").in("note_id", noteRows.map((item) => item.id)) : empty,
+    orderRows.length ? supabase.from("order_items").select("id,order_id,description").in("order_id", orderRows.map((item) => item.id)) : empty,
+    prescriptionRows.length ? supabase.from("prescription_items").select("prescription_id,product_id,dose,route,frequency,duration,instructions").in("prescription_id", prescriptionRows.map((item) => item.id)) : empty,
     stays?.length ? supabase.from("beds").select("id,code,ward_id").in("id", stays.map((item) => item.bed_id)) : empty,
   ]);
   const noteVersions = noteVersionsResponse.data || [];
@@ -290,15 +280,15 @@ export async function loadPatientChart(admissionId: string): Promise<PatientChar
     admission: { number: admission.admission_no, admittedAt: admission.admitted_at, dischargedAt: admission.discharged_at, status: admission.status, disposition: admission.discharge_disposition },
     careTeam:{attendingDoctor:doctorName(admission.attending_doctor_id),admittingDoctor:doctorName(admission.admitting_doctor_id),dischargingDoctor:doctorName(summary?.discharging_doctor_id)},
     allergies: allergies || [],
-    vitals: vitals.slice(0, 12).map((item) => ({ code: item.code, value: item.value, unit: item.unit, observedAt: item.observed_at })),
-    diagnoses: diagnoses.map((item) => ({ description: item.description, type: item.diagnosis_type, createdAt: item.created_at })),
-    notes: notes.map((note) => {
+    vitals: vitalRows.slice(0, 12).map((item) => ({ code: item.code, value: item.value, unit: item.unit, observedAt: item.observed_at })),
+    diagnoses: diagnosisRows.map((item) => ({ description: item.description, type: item.diagnosis_type, createdAt: item.created_at })),
+    notes: noteRows.map((note) => {
       const version = noteVersions.find((item) => item.note_id === note.id && item.version === note.current_version);
       const encounter = encounterMap.get(note.encounter_id);
       return { encounterNumber: encounter?.encounter_no || "Encounter", serviceDate: encounter?.service_date || "", chiefComplaint: String(version?.content?.chief_complaint || "—"), soapNote: String(version?.content?.soap_note || "—") };
     }),
-    orders: orders.map((order) => ({ number: order.order_no, type: order.order_type, status: order.status, orderedAt: order.ordered_at, items: orderItems.filter((item) => item.order_id === order.id).map((item) => item.description), results: results.filter((result) => orderItems.some((item) => item.order_id === order.id && item.id === result.order_item_id)).map((result) => result.result_text || result.status) })),
-    medications: prescriptions.map((prescription) => ({ number: prescription.prescription_no, status: prescription.status, prescribedAt: prescription.prescribed_at, items: prescriptionItems.filter((item) => item.prescription_id === prescription.id).map((item) => [productMap.get(item.product_id) || "Medicine", item.dose, item.route, item.frequency, item.duration, item.instructions].filter(Boolean).join(" · ")) })),
+    orders: orderRows.map((order) => ({ number: order.order_no, type: order.order_type, status: order.status, orderedAt: order.ordered_at, items: orderItems.filter((item) => item.order_id === order.id).map((item) => item.description), results: results.filter((result) => orderItems.some((item) => item.order_id === order.id && item.id === result.order_item_id)).map((result) => result.result_text || result.status) })),
+    medications: prescriptionRows.map((prescription) => ({ number: prescription.prescription_no, status: prescription.status, prescribedAt: prescription.prescribed_at, items: prescriptionItems.filter((item) => item.prescription_id === prescription.id).map((item) => [productMap.get(item.product_id) || "Medicine", item.dose, item.route, item.frequency, item.duration, item.instructions].filter(Boolean).join(" · ")) })),
     movements: (stays || []).map((stay) => { const bed = bedMap.get(stay.bed_id); return { location: bed ? `${wardMap.get(bed.ward_id) || "Ward"} · ${bed.code}` : "Unknown bed", startedAt: stay.started_at, endedAt: stay.ended_at, reason: stay.transfer_reason }; }),
     dischargeSummary: summary ? { finalDiagnosis: summary.final_diagnosis, condition: summary.condition_at_discharge, instructions: summary.instructions, followUp: summary.follow_up_plan, medications: summary.discharge_medications } : null,
     attachments: attachments.filter((item) => item.url),
