@@ -71,3 +71,131 @@ input,select,textarea,.filter{color:#e7edf2!important;background:#111f2a!importa
 .notice{color:#a8ddd6;background:rgba(20,65,63,.58);border-color:#275d59}.form-success{color:#7be0cf;background:#123b37!important;border-color:#28665f!important}.form-error{color:#ff9ca9;background:#442129!important;border-color:#71313c!important}
 .search-picker-grid,.search-picker-row,.picker-confirm-strip,.registry-record,.timeline-row{border-color:#2c3b48!important}.search-picker-row.selected{background:#153d3b!important}.empty-state,.empty-inline{color:#8393a5!important}
 @media(max-width:760px){.sidebar{background:rgba(12,27,38,.96);border-bottom-color:#263744}.brand h1{color:#f3f7fa}.nav-item{color:#a9b7c5;background:#142532}.nav-item.active{color:#fff}.topbar{background:rgba(12,25,35,.9)}.content{background:transparent}}
+
+/* V3.1 — shared dark-theme control contrast and viewport-safe dialogs */
+.modal-backdrop{
+  align-items:center;
+  justify-items:center;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+}
+.modal{
+  max-height:calc(100dvh - 32px)!important;
+  overflow:auto!important;
+  overscroll-behavior:contain;
+  scrollbar-color:#4b6172 transparent;
+  scrollbar-width:thin;
+}
+.modal-head,
+.modal-header{
+  position:sticky;
+  top:0;
+  z-index:10;
+  color:var(--ink);
+  background:rgba(25,39,51,.96)!important;
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+.modal .form-actions{
+  position:sticky;
+  bottom:0;
+  z-index:9;
+  margin-left:-22px;
+  margin-right:-22px;
+  margin-bottom:-22px;
+  padding:14px 22px max(14px,env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);
+  background:rgba(14,27,38,.96);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+.modal .adt-dialog-form .form-actions,
+.modal .billing-form .form-actions{
+  margin-left:-20px;
+  margin-right:-20px;
+  margin-bottom:-20px;
+  padding-left:20px;
+  padding-right:20px;
+}
+
+/* Module navigation must remain legible when module CSS uses a white surface. */
+.master-tabs button,
+.registry-tabs button,
+.inventory-tabs button,
+.search-picker-filters button{
+  color:#cbd6df;
+  border-color:#344554;
+  background:#172733;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.master-tabs button:hover,
+.registry-tabs button:hover,
+.inventory-tabs button:hover,
+.search-picker-filters button:hover{
+  color:#f5f8fa;
+  border-color:#4b6172;
+  background:#203442;
+}
+.master-tabs button.active,
+.registry-tabs button.active,
+.inventory-tabs button.active,
+.search-picker-filters button.active{
+  color:#fff;
+  border-color:#2bb5aa;
+  background:linear-gradient(180deg,#22aa9f,#137d78);
+}
+.inventory-tabs{
+  border-color:#2f404e;
+  background:#101e29;
+}
+
+/* Shared hard-coded light surfaces used by pickers and operational modules. */
+.search-picker-selection,
+.search-picker-search,
+.search-picker-row,
+.pharmacy-item-card,
+.pharmacy-item-builder,
+.medication-card,
+.clinical-summary,
+.allergy-record,
+.timeline-row,
+.inventory-metric,
+.inventory-filters,
+.reconcile-summary{
+  color:var(--ink);
+  border-color:#304250!important;
+  background:#13232f!important;
+}
+.search-picker-grid-head{
+  color:#91a0b0;
+  background:#101e29;
+}
+.adjustment-comparison strong,
+.clinical-summary p,
+.inventory-metric strong,
+.pharmacy-item-builder legend,
+.pharmacy-form label,
+.dispense-form label,
+.adt-dialog-form label,
+.inventory-filters label,
+.inventory-form label,
+.search-picker-field>label{
+  color:#e7edf2;
+}
+.charge-table-scroll tr.alternate,
+.registry-scroll tr.alternate,
+.data-table tr.alternate{
+  background:rgba(25,39,51,.88);
+}
+button:disabled{
+  color:#8292a3!important;
+  border-color:#2d3d4a!important;
+  background:#172631!important;
+  opacity:.72;
+}
+
+@media(max-height:760px),(max-width:760px){
+  .modal-backdrop{align-items:start;padding:10px}
+  .modal{max-height:calc(100dvh - 20px)!important;border-radius:18px!important}
+}
