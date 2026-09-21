@@ -199,3 +199,43 @@ button:disabled{
   .modal-backdrop{align-items:start;padding:10px}
   .modal{max-height:calc(100dvh - 20px)!important;border-radius:18px!important}
 }
+
+/* V3.2 — shared action-button contrast across dark operational modules */
+.adt-view-btn,
+.pharmacy-item-builder>.btn,
+.add-order-item,
+.add-medicine-inline{
+  color:#dce5ec!important;
+  border-color:#405362!important;
+  background:#1a2b38!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 4px 12px rgba(0,0,0,.16);
+}
+.adt-view-btn:hover,
+.pharmacy-item-builder>.btn:hover,
+.add-order-item:hover,
+.add-medicine-inline:hover{
+  color:#f7fafc!important;
+  border-color:#60788a!important;
+  background:#243947!important;
+}
+.btn-danger,
+.attachment-remove-btn,
+.medicine-remove,
+.cancel-record .table-action{
+  color:#ff9cab!important;
+  border-color:#75404a!important;
+  background:#3b2229!important;
+}
+.btn-danger:hover,
+.attachment-remove-btn:hover,
+.medicine-remove:hover:not(:disabled),
+.cancel-record .table-action:hover{
+  color:#ffd6dc!important;
+  border-color:#9b5260!important;
+  background:#512a33!important;
+}
+.adt-row-actions .btn svg,
+.attachment-actions .btn svg,
+.medicine-remove svg{
+  color:currentColor;
+}
