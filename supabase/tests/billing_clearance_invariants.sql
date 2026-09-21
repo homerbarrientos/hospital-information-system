@@ -33,3 +33,15 @@ group by c.id,c.status;
 -- One billing case per admission and encounter.
 select admission_id,count(*) from public.billing_cases where admission_id is not null group by admission_id having count(*)>1;
 select encounter_id,count(*) from public.billing_cases group by encounter_id having count(*)>1;
+
+-- Coverage-adjusted encounter balances must not be over- or under-allocated.
+select c.id,c.encounter_id,c.final_balance,calculated.final_balance calculated_balance
+from public.billing_cases c
+cross join lateral(
+ select
+  coalesce(sum(le.amount) filter(where le.kind<>'payment'),0)
+  -coalesce((select sum(pa.amount) from public.payment_allocations pa join public.ledger_entries charged on charged.id=pa.ledger_entry_id where charged.account_id=c.account_id and charged.encounter_id=c.encounter_id),0) final_balance
+ from public.ledger_entries le
+ where le.account_id=c.account_id and le.encounter_id=c.encounter_id
+) calculated
+where abs(c.final_balance-calculated.final_balance)>0.009;
