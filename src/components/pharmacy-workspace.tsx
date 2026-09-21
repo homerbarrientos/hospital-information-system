@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { CheckCircle2, ChevronRight, FilePenLine, FilePlus2, Paperclip, Pill, Plus, Trash2, X } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -32,6 +32,9 @@ export function PharmacyWorkspace({ prescriptions, encounters, patients, items, 
 }) {
   const [creating,setCreating]=useState(false);
   const [selected,setSelected]=useState<Prescription|null>(null);
+  useEffect(()=>{
+    if(selected&&!prescriptions.some(prescription=>prescription.id===selected.id))setSelected(null);
+  },[prescriptions,selected]);
   const encounterFor=(prescription:Prescription)=>encounters.find(encounter=>encounter.id===prescription.encounter_id);
   const patientFor=(prescription:Prescription)=>patients.find(patient=>patient.id===encounterFor(prescription)?.patient_id);
   return <>
