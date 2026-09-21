@@ -33,7 +33,10 @@ export function PharmacyWorkspace({ prescriptions, encounters, patients, items, 
   const [creating,setCreating]=useState(false);
   const [selected,setSelected]=useState<Prescription|null>(null);
   useEffect(()=>{
-    if(selected&&!prescriptions.some(prescription=>prescription.id===selected.id))setSelected(null);
+    if(!selected)return;
+    const refreshed=prescriptions.find(prescription=>prescription.id===selected.id);
+    if(!refreshed)setSelected(null);
+    else if(refreshed!==selected)setSelected(refreshed);
   },[prescriptions,selected]);
   const encounterFor=(prescription:Prescription)=>encounters.find(encounter=>encounter.id===prescription.encounter_id);
   const patientFor=(prescription:Prescription)=>patients.find(patient=>patient.id===encounterFor(prescription)?.patient_id);
