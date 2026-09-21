@@ -26,7 +26,10 @@ export function InventoryWorkspace({facilityId,currentDate,products,stores,suppl
  const stockStatus=(lot:Lot)=>{if(Number(lot.quantity_on_hand)<=0)return"out";if(lot.expiry_date&&lot.expiry_date<currentDate)return"expired";const days=lot.expiry_date?Math.ceil((new Date(lot.expiry_date).getTime()-new Date(currentDate).getTime())/86400000):9999;if(days<=90)return"near_expiry";if(Number(lot.quantity_on_hand)<=Number(product(lot.product_id)?.reorder_level||0))return"low";return"in_stock";};
  const shownLots=lots.filter(lot=>{const item=products.find(p=>p.id===lot.product_id),q=query.toLowerCase();return(!q||`${item?.code} ${item?.name} ${lot.lot_no}`.toLowerCase().includes(q))&&(status==="all"||stockStatus(lot)===status)&&(location==="all"||lot.store_id===location)});
  const totals={medicines:new Set(lots.map(l=>l.product_id)).size,low:lots.filter(l=>stockStatus(l)==="low").length,expiry:lots.filter(l=>stockStatus(l)==="near_expiry").length,out:lots.filter(l=>stockStatus(l)==="out").length};
- const tabMovements=(source?:string,type?:string)=>movements.filter(m=>(!source||m.source_type===source)&&(!type||m.movement_type===type));
+ const inferredBalances=new Map<string,number>();
+ lots.forEach(lot=>{let balance=Number(lot.quantity_on_hand);movements.filter(m=>m.lot_id===lot.id).sort((a,b)=>new Date(b.posted_at).getTime()-new Date(a.posted_at).getTime()||b.id.localeCompare(a.id)).forEach(m=>{inferredBalances.set(m.id,balance);balance-=Number(m.quantity);});});
+ const displayMovements=movements.map(m=>m.balance_after==null&&inferredBalances.has(m.id)?{...m,balance_after:inferredBalances.get(m.id)!}:m);
+ const tabMovements=(source?:string,type?:string)=>displayMovements.filter(m=>(!source||m.source_type===source)&&(!type||m.movement_type===type));
  const movementTable=(rows:Movement[])=><MovementTable rows={rows} products={products} stores={stores} lots={lots} suppliers={suppliers} documents={documents} attach={setAttachMovement}/>;
  return <>
   <div className="inventory-tabs" role="tablist">{tabs.map(([key,label])=><button key={key} role="tab" aria-selected={tab===key} className={tab===key?"active":""} onClick={()=>setTab(key)}>{label}</button>)}</div>
@@ -41,7 +44,7 @@ export function InventoryWorkspace({facilityId,currentDate,products,stores,suppl
   {adjusting?<AdjustmentDialog facilityId={facilityId} lots={lots} products={products} stores={stores} references={references} close={()=>setAdjusting(false)}/>:null}
   {transferring?<TransferDialog facilityId={facilityId} lots={lots.filter(l=>Number(l.quantity_on_hand)>0)} products={products} stores={stores} close={()=>setTransferring(false)}/>:null}
   {supplierMode?<SupplierDialog facilityId={facilityId} supplier={supplierMode==="new"?undefined:supplierMode} close={()=>setSupplierMode(null)}/>:null}
-  {selectedLot?<LotDetail lot={selectedLot} product={product(selectedLot.product_id)} store={store(selectedLot.store_id)} supplier={supplier(selectedLot.supplier_id)} movements={movements.filter(m=>m.lot_id===selectedLot.id)} close={()=>setSelectedLot(null)}/>:null}
+  {selectedLot?<LotDetail lot={selectedLot} product={product(selectedLot.product_id)} store={store(selectedLot.store_id)} supplier={supplier(selectedLot.supplier_id)} movements={displayMovements.filter(m=>m.lot_id===selectedLot.id)} close={()=>setSelectedLot(null)}/>:null}
   {attachMovement?<AttachmentDialog movement={attachMovement} facilityId={facilityId} close={()=>setAttachMovement(null)}/>:null}
  </>;
 }
