@@ -25,6 +25,17 @@ from public.queue_entries q join public.encounters e on e.id=q.encounter_id
 where q.status in('waiting','called','in_service')
 and(e.status in('completed','cancelled') or e.department_id<>q.department_id);
 
+-- Queue-origin encounters in consultation must have an editable consultation note.
+select q.id,q.queue_no,e.encounter_no
+from public.queue_entries q
+join public.encounters e on e.id=q.encounter_id
+where q.status='in_service'
+and e.status='in_consultation'
+and not exists(
+ select 1 from public.clinical_notes n
+ where n.encounter_id=e.id and n.note_type='consultation'
+);
+
 -- Every stock lot balance must agree with its most recent posted movement balance.
 with latest as(
  select distinct on(m.lot_id)m.lot_id,m.balance_after
