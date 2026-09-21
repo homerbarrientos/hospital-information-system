@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { PageHeading } from "@/components/app-shell";
+import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 const PAGE_SIZE = 50;
@@ -84,7 +85,7 @@ export default async function Audit({
           <tbody>
             {(events || []).map((event) => (
               <tr key={event.id}>
-                <td>{new Date(event.created_at).toLocaleString("en-PH")}</td>
+                <td>{formatDateTime(event.created_at)}</td>
                 <td>{event.actor_id ? String(event.actor_id).slice(0, 8) : "System"}</td>
                 <td><strong>{event.event_type}</strong></td>
                 <td>
