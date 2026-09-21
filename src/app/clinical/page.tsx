@@ -56,16 +56,20 @@ export default async function Clinical({
   }
   if (date) encountersQuery = encountersQuery.eq("service_date", date);
 
-  const [{ data: encounters, error, count }, { data: allergies }, { data: doctorAssignments }] = await Promise.all([
+  const [{ data: encounters, error, count }, { data: doctorAssignments }] = await Promise.all([
     encountersQuery,
-    supabase.from("allergies").select("id,patient_id,substance,reaction,severity,status,version").order("recorded_at", { ascending: false }),
     supabase.from("doctor_facility_assignments").select("doctor_id,doctors(id,first_name,last_name,suffix,specialty,status)").eq("facility_id", facilityId).eq("active", true),
   ]);
 
   const patientIds = [...new Set((encounters || []).map((encounter) => encounter.patient_id))];
-  const { data: patients } = patientIds.length
-    ? await supabase.from("patients").select("id,mrn,first_name,last_name").in("id", patientIds)
-    : { data: [] };
+  const [{ data: patients }, { data: allergies }] = await Promise.all([
+    patientIds.length
+      ? supabase.from("patients").select("id,mrn,first_name,last_name").in("id", patientIds)
+      : Promise.resolve({ data: [] }),
+    patientIds.length
+      ? supabase.from("allergies").select("id,patient_id,substance,reaction,severity,status,version").in("patient_id", patientIds).order("recorded_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+  ]);
   const encounterIds = (encounters || []).map((encounter) => encounter.id);
   let consultationDetails: Array<{
     encounter_id: string; chief_complaint: string; soap_note: string; diagnosis: string; version: number;
