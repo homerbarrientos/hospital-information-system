@@ -97,7 +97,7 @@ input,select,textarea,.filter{color:#e7edf2!important;background:#111f2a!importa
   backdrop-filter:blur(18px);
   -webkit-backdrop-filter:blur(18px);
 }
-.modal .form-actions{
+.modal > form > .form-actions{
   position:sticky;
   bottom:0;
   z-index:9;
@@ -110,8 +110,8 @@ input,select,textarea,.filter{color:#e7edf2!important;background:#111f2a!importa
   backdrop-filter:blur(18px);
   -webkit-backdrop-filter:blur(18px);
 }
-.modal .adt-dialog-form .form-actions,
-.modal .billing-form .form-actions{
+.modal > .adt-dialog-form > .form-actions,
+.modal > .billing-form > .form-actions{
   margin-left:-20px;
   margin-right:-20px;
   margin-bottom:-20px;

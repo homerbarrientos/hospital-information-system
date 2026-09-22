@@ -6,12 +6,13 @@
 - Test users have the correct facility and role assignments.
 - Test patients, doctors, services, medicines, rooms, beds, prices, and billing mappings exist.
 - Only synthetic test data is used.
+- `202609220004_profile_photos.sql` is applied before testing patient and doctor photos.
 
 ## End-to-end scenario
 
 | Step | Module | Test action | Expected result |
 |---:|---|---|---|
-| 1 | Patients | Register a patient with PhilHealth and emergency-contact details. Edit one field with a reason. | MRN is unique; updated data persists; change is audited. |
+| 1 | Patients | Register a patient with PhilHealth and emergency-contact details. Edit one field, then add/replace/remove the profile photo with a reason. | MRN is unique; updated data persists; the private JPG/PNG photo and every change are audited. |
 | 2 | Appointment & Queue | Create an appointment, mark arrival, enqueue, call, and start service. | Status follows the valid sequence and the encounter is linked once. |
 | 3 | Consultation | Record complaint, vitals, SOAP note, allergy, and working diagnosis. Complete consultation. | Required fields validate; finalized clinical data remains traceable. |
 | 4 | Clinical Registry | Add attending and consultant doctors. Add principal and secondary ICD diagnoses. | Only one primary doctor and principal diagnosis; disease census updates. |
@@ -25,6 +26,8 @@
 | 12 | Clearance | Finalize bill and issue clearance after balance reaches zero. Reopen with reason, then finalize again. | Outstanding bills cannot clear; reopening is audited; late charges reopen automatically. |
 | 13 | Reports | Apply date range, switch all tabs, search, export CSV, and print. | Counts/totals match source transactions; export uses the selected report and period. |
 | 14 | Audit | Search the actions performed above. | Create, update, approval, reversal, finalization, and clearance events are present. |
+
+Before the transaction cycle, open long forms and nested editors at desktop and mobile widths. Confirm action rows stay inside their own cards, only the dialog footer remains sticky, and no control overlaps another field.
 
 ## Negative tests
 
@@ -46,6 +49,7 @@ Run these scripts after the manual scenario:
 3. `supabase/tests/reports_invariants.sql`
 4. `supabase/tests/full_system_uat.sql`
 5. `supabase/tests/admin_rbac_invariants.sql`
+6. `supabase/tests/profile_photo_invariants.sql`
 
 Every query must return zero rows. Any returned row is a UAT finding and must be investigated before sign-off.
 
