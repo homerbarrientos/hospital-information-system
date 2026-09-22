@@ -41,6 +41,17 @@ function SelectField({ name, label, group, patient, options, required=false }:{ 
   return <label>{label}<select name={name} defaultValue={current||""} required={required}><option value="">Not recorded</option>{options(group).map(option=><option key={option.code} value={option.code}>{option.label}</option>)}</select></label>;
 }
 
+function ReferenceTextSelect({ name, label, group, patient, options, defaultValue="" }:{ name:"nationality"|"religion"|"occupation"|"emergency_contact_relationship"; label:string; group:string; patient?:Patient; options:(group:string)=>Option[]; defaultValue?:string }) {
+  const current = patient?.[name] || defaultValue;
+  const choices = options(group);
+  const hasCurrent = !current || choices.some(option => option.label.toLowerCase() === current.toLowerCase());
+  return <label>{label}<select name={name} defaultValue={current}>
+    <option value="">Not recorded</option>
+    {!hasCurrent&&<option value={current}>{current}</option>}
+    {choices.map(option=><option key={option.code} value={option.label}>{option.label}</option>)}
+  </select></label>;
+}
+
 function SectionTitle({ children }:{ children:React.ReactNode }) { return <h4 className="patient-form-section wide">{children}</h4>; }
 
 function PatientDialog({ title, facilityId, patient, referenceOptions, action, close }:{ title:string; facilityId?:string; patient?:Patient; referenceOptions:Option[]; action:(s:ActionState,f:FormData)=>Promise<ActionState>; close:()=>void }) {
@@ -52,13 +63,13 @@ function PatientDialog({ title, facilityId, patient, referenceOptions, action, c
       <SectionTitle>Identity and demographics</SectionTitle>
       <label>First name<input required minLength={2} maxLength={100} name="first_name" defaultValue={patient?.first_name}/></label><label>Middle name<input maxLength={100} name="middle_name" defaultValue={patient?.middle_name||""}/></label><label>Last name<input required minLength={2} maxLength={100} name="last_name" defaultValue={patient?.last_name}/></label><label>Birth date<input type="date" max={new Date().toISOString().slice(0,10)} name="birth_date" defaultValue={patient?.birth_date||""}/></label>
       <SelectField name="sex_at_birth" label="Sex at birth" group="sex_at_birth" patient={patient} options={options}/><SelectField name="civil_status" label="Civil status" group="civil_status" patient={patient} options={options}/><SelectField name="blood_type" label="Blood type" group="blood_type" patient={patient} options={options}/>
-      <label>Nationality<input maxLength={80} name="nationality" defaultValue={patient?.nationality||"Filipino"}/></label><label>Religion<input maxLength={100} name="religion" defaultValue={patient?.religion||""}/></label><label>Occupation<input maxLength={120} name="occupation" defaultValue={patient?.occupation||""}/></label>
+      <ReferenceTextSelect name="nationality" label="Nationality" group="nationality" patient={patient} options={options} defaultValue="Filipino"/><ReferenceTextSelect name="religion" label="Religion" group="religion" patient={patient} options={options}/><ReferenceTextSelect name="occupation" label="Occupation" group="occupation" patient={patient} options={options}/>
       <SectionTitle>Contact and address</SectionTitle>
       <label>Phone<input maxLength={40} name="phone" defaultValue={patient?.phone||""}/></label><label>Email<input type="email" maxLength={200} name="email" defaultValue={patient?.email||""}/></label><label className="wide">House number and street<input maxLength={250} name="address_line1" defaultValue={address.line1||""}/></label><label>Barangay<input maxLength={120} name="barangay" defaultValue={address.barangay||""}/></label><label>City / Municipality<input maxLength={120} name="city_municipality" defaultValue={address.city_municipality||""}/></label><label>Province<input maxLength={120} name="province" defaultValue={address.province||""}/></label><label>Postal code<input maxLength={12} name="postal_code" defaultValue={address.postal_code||""}/></label>
       <SectionTitle>PhilHealth and government identification</SectionTitle>
       <label>PhilHealth number<input inputMode="numeric" pattern="[0-9-]{12,14}" maxLength={14} name="philhealth_no" defaultValue={patient?.philhealth_no||""} placeholder="12-digit PIN"/></label><SelectField name="philhealth_membership_type" label="Membership type" group="philhealth_membership_type" patient={patient} options={options}/><SelectField name="philhealth_relationship" label="Member relationship" group="philhealth_relationship" patient={patient} options={options}/><SelectField name="philhealth_status" label="Eligibility status" group="philhealth_status" patient={patient} options={options}/><label>Eligibility valid until<input type="date" name="philhealth_valid_until" defaultValue={patient?.philhealth_valid_until||""}/></label><SelectField name="government_id_type" label="Government ID type" group="government_id_type" patient={patient} options={options}/><label>Government ID number<input maxLength={100} name="government_id_no" defaultValue={patient?.government_id_no||""}/></label>
       <SectionTitle>Emergency contact</SectionTitle>
-      <label>Contact name<input maxLength={200} name="emergency_contact_name" defaultValue={patient?.emergency_contact_name||""}/></label><label>Relationship<input maxLength={80} name="emergency_contact_relationship" defaultValue={patient?.emergency_contact_relationship||""}/></label><label>Contact phone<input maxLength={40} name="emergency_contact_phone" defaultValue={patient?.emergency_contact_phone||""}/></label>
+      <label>Contact name<input maxLength={200} name="emergency_contact_name" defaultValue={patient?.emergency_contact_name||""}/></label><ReferenceTextSelect name="emergency_contact_relationship" label="Relationship" group="emergency_contact_relationship" patient={patient} options={options}/><label>Contact phone<input maxLength={40} name="emergency_contact_phone" defaultValue={patient?.emergency_contact_phone||""}/></label>
       {patient&&<><SectionTitle>Change control</SectionTitle><label className="wide">Reason for modification<textarea required minLength={5} maxLength={500} rows={4} name="reason" placeholder="Explain why the patient record is being changed"/></label></>}
       {state.message&&<div className={state.ok?"form-success wide":"form-error wide"}>{state.message}</div>}
       <div className="form-actions wide"><button type="button" className="btn btn-secondary" onClick={close}>{state.ok?"Close":"Cancel"}</button>{!state.ok&&<button disabled={pending} className="btn btn-primary">{pending?"Saving…":"Save patient"}</button>}</div>
