@@ -49,6 +49,8 @@ Run these scripts after the manual scenario:
 
 Every query must return zero rows. Any returned row is a UAT finding and must be investigated before sign-off.
 
+For Employee ID authentication, verify account creation, one-time temporary credential display, forced first-login password change, administrator reset, Employee ID modification, deny-by-default access, and the resulting `staff.account_created`, `staff.temporary_password_issued`, `staff.employee_id_updated`, and `staff.password_changed` audit events.
+
 ## Sign-off fields
 
 - Environment / deployment:

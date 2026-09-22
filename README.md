@@ -14,7 +14,7 @@ Open `http://localhost:3000`. With no Supabase credentials, the application disp
 
 ## Connect Supabase
 
-Create a dedicated development project, fill `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, then apply `supabase/migrations/202609140001_phase1_foundation.sql` through the Supabase CLI. Configure `SUPABASE_SERVICE_ROLE_KEY` only in the server deployment environment when staff invitation emails are enabled; never expose it to browser code.
+Create a dedicated development project, fill `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, then apply the ordered files in `supabase/migrations/` through the Supabase CLI. Configure `SUPABASE_SERVICE_ROLE_KEY` only in the server deployment environment for staff invitations, Employee ID provisioning, and administrator credential resets; never expose it to browser code.
 
 ## Safety status
 
