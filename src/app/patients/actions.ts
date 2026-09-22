@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
@@ -40,4 +41,44 @@ export async function setPatientStatus(form: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_patient_status", { target_patient: value(form, "patient_id"), new_status: value(form, "status"), change_reason: value(form, "reason") });
   if (error) throw new Error(error.message); revalidatePath("/patients");
+}
+
+export async function updatePatientPhoto(_: ActionState, form: FormData): Promise<ActionState> {
+  const supabase = await createClient();
+  const facilityId = value(form, "facility_id");
+  const patientId = value(form, "patient_id");
+  const reason = value(form, "reason");
+  const removePhoto = value(form, "remove_photo") === "true";
+  const photo = form.get("profile_photo");
+  const hasPhoto = photo instanceof File && photo.size > 0;
+  if (!facilityId || !patientId || reason.length < 5) return { ok:false, message:"A reason of at least five characters is required." };
+  if (removePhoto && hasPhoto) return { ok:false, message:"Choose either a replacement photo or remove the current photo." };
+  if (!removePhoto && !hasPhoto) return { ok:false, message:"Choose a JPG or PNG profile photo." };
+
+  let newPath: string | null = null;
+  let fileName: string | null = null;
+  let fileType: string | null = null;
+  let fileSize: number | null = null;
+  if (hasPhoto) {
+    const extensions = new Map([["image/jpeg","jpg"],["image/png","png"]]);
+    const extension = extensions.get(photo.type);
+    if (!extension) return { ok:false, message:"Profile photo must be a JPG or PNG image." };
+    if (photo.size > 3 * 1024 * 1024) return { ok:false, message:"Profile photo must be 3 MB or smaller." };
+    newPath = `${facilityId}/patients/${patientId}/${randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from("profile-photos").upload(newPath, photo, { contentType:photo.type, upsert:false });
+    if (uploadError) return { ok:false, message:uploadError.message };
+    fileName = photo.name; fileType = photo.type; fileSize = photo.size;
+  }
+
+  const { data: oldPath, error } = await supabase.rpc("set_patient_profile_photo", {
+    target_patient:patientId, target_facility:facilityId, new_path:newPath,
+    original_file_name:fileName, file_type:fileType, file_size:fileSize, change_reason:reason,
+  });
+  if (error) {
+    if (newPath) await supabase.storage.from("profile-photos").remove([newPath]);
+    return { ok:false, message:error.message };
+  }
+  if (oldPath && oldPath !== newPath) await supabase.storage.from("profile-photos").remove([String(oldPath)]);
+  revalidatePath("/patients"); revalidatePath("/clinical"); revalidatePath("/admissions");
+  return { ok:true, message:removePhoto ? "Patient profile photo removed with an audit entry." : "Patient profile photo updated with an audit entry." };
 }

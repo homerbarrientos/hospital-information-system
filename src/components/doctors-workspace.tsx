@@ -1,10 +1,12 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Pencil, Plus, Stethoscope, UserRoundCheck, UserRoundX, X } from "lucide-react";
-import { changeDoctorStatus, saveDoctor, type DoctorState } from "@/app/administration/doctors/actions";
+import { ImagePlus, Pencil, Plus, Stethoscope, UserRoundCheck, UserRoundX, X } from "lucide-react";
+import { changeDoctorStatus, saveDoctor, updateDoctorPhoto, type DoctorState } from "@/app/administration/doctors/actions";
+import { ProfilePhoto } from "@/components/profile-photo";
+import { ProfilePhotoDialog } from "@/components/profile-photo-dialog";
 
-export type Doctor = { id:string; first_name:string; middle_name:string|null; last_name:string; suffix:string|null; license_number:string; specialty:string; phone:string|null; email:string|null; status:string; version:number; department_id:string|null; prc_issued_on:string|null; prc_expires_on:string|null; credential_status:string; philhealth_accreditation_no:string|null; philhealth_valid_from:string|null; philhealth_valid_until:string|null; subspecialty:string|null; doctor_type:string|null; clinic_schedule:string|null; professional_fee:number|null };
+export type Doctor = { id:string; first_name:string; middle_name:string|null; last_name:string; suffix:string|null; license_number:string; specialty:string; phone:string|null; email:string|null; status:string; version:number; department_id:string|null; prc_issued_on:string|null; prc_expires_on:string|null; credential_status:string; philhealth_accreditation_no:string|null; philhealth_valid_from:string|null; philhealth_valid_until:string|null; subspecialty:string|null; doctor_type:string|null; clinic_schedule:string|null; professional_fee:number|null; profile_photo_path:string|null; profile_photo_url:string|null };
 type Department = { id:string; name:string };
 type ReferenceOption={code:string;label:string;group?:string};
 const initial: DoctorState = { ok:false, message:"" };
@@ -12,16 +14,18 @@ const initial: DoctorState = { ok:false, message:"" };
 export function DoctorsWorkspace({ doctors, departments, facilityId, referenceOptions }: { doctors:Doctor[]; departments:Department[]; facilityId:string;referenceOptions:ReferenceOption[] }) {
   const [editing,setEditing]=useState<Doctor|null|"new">(null);
   const [statusDoctor,setStatusDoctor]=useState<Doctor|null>(null);
+  const [photoDoctor,setPhotoDoctor]=useState<Doctor|null>(null);
   return <>
     <div className="toolbar"><button className="btn btn-primary" onClick={()=>setEditing("new")}><Plus size={15}/>Add doctor</button></div>
     <section className="card"><div className="card-header"><h3>Facility doctors</h3><span className="badge blue">{doctors.filter(d=>d.status==="active").length} active</span></div>
       <div className="table-wrap"><table className="data-table doctor-table"><thead><tr><th>Doctor</th><th>License</th><th>Specialty</th><th>Department</th><th>Contact</th><th>Status / Actions</th></tr></thead><tbody>
-        {doctors.map(doctor=><tr key={doctor.id}><td className="name-cell"><strong>Dr. {doctor.last_name}, {doctor.first_name} {doctor.suffix||""}</strong><span>{doctor.doctor_type||"Doctor"} · Version {doctor.version}</span></td><td className="name-cell"><span>{doctor.license_number}</span><span>{doctor.credential_status}{doctor.prc_expires_on?` · until ${doctor.prc_expires_on}`:""}</span></td><td className="name-cell"><span>{doctor.specialty}</span><span>{doctor.subspecialty||"No subspecialty"}</span></td><td>{departments.find(d=>d.id===doctor.department_id)?.name||"All departments"}</td><td className="name-cell"><span>{doctor.phone||"No phone"}</span><span>{doctor.email||"No email"}</span></td><td><div className="doctor-actions"><span className={`badge ${doctor.status==="active"?"green":"red"}`}>{doctor.status}</span><button className="btn btn-secondary" onClick={()=>setEditing(doctor)}><Pencil size={14}/>Edit</button><button className="btn btn-secondary" onClick={()=>setStatusDoctor(doctor)}>{doctor.status==="active"?<UserRoundX size={14}/>:<UserRoundCheck size={14}/>} {doctor.status==="active"?"Deactivate":"Activate"}</button></div></td></tr>)}
+        {doctors.map(doctor=><tr key={doctor.id}><td><div className="entity-identity"><ProfilePhoto url={doctor.profile_photo_url} firstName={doctor.first_name} lastName={doctor.last_name}/><span className="name-cell"><strong>Dr. {doctor.last_name}, {doctor.first_name} {doctor.suffix||""}</strong><span>{doctor.doctor_type||"Doctor"} · Version {doctor.version}</span></span></div></td><td className="name-cell"><span>{doctor.license_number}</span><span>{doctor.credential_status}{doctor.prc_expires_on?` · until ${doctor.prc_expires_on}`:""}</span></td><td className="name-cell"><span>{doctor.specialty}</span><span>{doctor.subspecialty||"No subspecialty"}</span></td><td>{departments.find(d=>d.id===doctor.department_id)?.name||"All departments"}</td><td className="name-cell"><span>{doctor.phone||"No phone"}</span><span>{doctor.email||"No email"}</span></td><td><div className="doctor-actions"><span className={`badge ${doctor.status==="active"?"green":"red"}`}>{doctor.status}</span><button className="btn btn-secondary" onClick={()=>setEditing(doctor)}><Pencil size={14}/>Edit</button><button className="btn btn-secondary" onClick={()=>setPhotoDoctor(doctor)}><ImagePlus size={14}/>Photo</button><button className="btn btn-secondary" onClick={()=>setStatusDoctor(doctor)}>{doctor.status==="active"?<UserRoundX size={14}/>:<UserRoundCheck size={14}/>} {doctor.status==="active"?"Deactivate":"Activate"}</button></div></td></tr>)}
         {!doctors.length&&<tr><td colSpan={6} className="empty-state">No doctors registered yet.</td></tr>}
       </tbody></table></div>
     </section>
     {editing&&<DoctorDialog doctor={editing==="new"?undefined:editing} departments={departments} facilityId={facilityId} referenceOptions={referenceOptions} close={()=>setEditing(null)}/>} 
     {statusDoctor&&<StatusDialog doctor={statusDoctor} facilityId={facilityId} close={()=>setStatusDoctor(null)}/>} 
+    {photoDoctor&&<ProfilePhotoDialog kind="doctor" recordId={photoDoctor.id} facilityId={facilityId} firstName={photoDoctor.first_name} lastName={photoDoctor.last_name} photoUrl={photoDoctor.profile_photo_url} action={updateDoctorPhoto} close={()=>setPhotoDoctor(null)}/>}
   </>;
 }
 

@@ -1,9 +1,11 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { Pencil, Plus, Search, X } from "lucide-react";
+import { ImagePlus, Pencil, Plus, Search, X } from "lucide-react";
 import { formatDate } from "@/lib/format";
-import { registerPatient, setPatientStatus, updatePatient, type ActionState } from "@/app/patients/actions";
+import { registerPatient, setPatientStatus, updatePatient, updatePatientPhoto, type ActionState } from "@/app/patients/actions";
+import { ProfilePhoto } from "@/components/profile-photo";
+import { ProfilePhotoDialog } from "@/components/profile-photo-dialog";
 
 type Address = { line1?: string; barangay?: string; city_municipality?: string; province?: string; postal_code?: string };
 export type Patient = {
@@ -12,23 +14,25 @@ export type Patient = {
   civil_status:string|null; nationality:string|null; religion:string|null; blood_type:string|null; occupation:string|null;
   philhealth_no:string|null; philhealth_membership_type:string|null; philhealth_relationship:string|null; philhealth_status:string|null; philhealth_valid_until:string|null;
   government_id_type:string|null; government_id_no:string|null; emergency_contact_name:string|null; emergency_contact_relationship:string|null; emergency_contact_phone:string|null;
+  profile_photo_path:string|null; profile_photo_url:string|null;
 };
 type Option = { code:string; label:string; group?:string };
 const initial:ActionState = { ok:false, message:"" };
 
 export function PatientWorkspace({ patients, facilityId, referenceOptions }:{ patients:Patient[]; facilityId:string; referenceOptions:Option[] }) {
-  const [query,setQuery] = useState(""); const [editing,setEditing] = useState<Patient|null>(null); const [registering,setRegistering] = useState(false);
+  const [query,setQuery] = useState(""); const [editing,setEditing] = useState<Patient|null>(null); const [registering,setRegistering] = useState(false); const [photoPatient,setPhotoPatient] = useState<Patient|null>(null);
   const options = (group:string) => referenceOptions.filter(option => option.group === group);
   const label = (group:string, code:string|null) => options(group).find(option => option.code === code)?.label || code || "—";
   const shown = useMemo(() => { const q=query.toLowerCase(); return patients.filter(p => `${p.mrn} ${p.first_name} ${p.middle_name||""} ${p.last_name} ${p.phone||""} ${p.philhealth_no||""} ${p.government_id_no||""}`.toLowerCase().includes(q)); }, [patients,query]);
   return <>
     <div className="toolbar"><div className="search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search MRN, name, phone, PhilHealth, or government ID"/></div><button className="btn btn-primary" onClick={()=>setRegistering(true)}><Plus size={15}/>Register patient</button></div>
     <section className="card"><div className="table-wrap"><table className="data-table"><thead><tr><th>MRN</th><th>Patient</th><th>Birth date</th><th>Sex / Blood</th><th>Contact</th><th>PhilHealth</th><th>Action</th></tr></thead><tbody>
-      {shown.map(p=><tr key={p.id}><td><strong>{p.mrn}</strong></td><td className="name-cell"><strong>{p.last_name}, {p.first_name} {p.middle_name||""}</strong><span>Created {formatDate(p.created_at)}</span></td><td>{p.birth_date||"—"}</td><td className="name-cell"><span>{label("sex_at_birth",p.sex_at_birth)}</span><span>{label("blood_type",p.blood_type)}</span></td><td>{p.phone||p.email||"—"}</td><td className="name-cell"><span>{p.philhealth_no||"Not recorded"}</span><span>{label("philhealth_status",p.philhealth_status)}</span></td><td><div className="record-actions"><button className="table-action" onClick={()=>setEditing(p)}><Pencil size={14}/> Edit</button><form action={setPatientStatus}><input type="hidden" name="patient_id" value={p.id}/><input type="hidden" name="status" value={p.status==="active"?"inactive":"active"}/><input required name="reason" aria-label="Reason" placeholder="Reason"/><button className="table-action">{p.status==="active"?"Archive":"Restore"}</button></form></div></td></tr>)}
+      {shown.map(p=><tr key={p.id}><td><strong>{p.mrn}</strong></td><td><div className="entity-identity"><ProfilePhoto url={p.profile_photo_url} firstName={p.first_name} lastName={p.last_name}/><span className="name-cell"><strong>{p.last_name}, {p.first_name} {p.middle_name||""}</strong><span>Created {formatDate(p.created_at)}</span></span></div></td><td>{p.birth_date||"—"}</td><td className="name-cell"><span>{label("sex_at_birth",p.sex_at_birth)}</span><span>{label("blood_type",p.blood_type)}</span></td><td>{p.phone||p.email||"—"}</td><td className="name-cell"><span>{p.philhealth_no||"Not recorded"}</span><span>{label("philhealth_status",p.philhealth_status)}</span></td><td><div className="record-actions"><button className="table-action" onClick={()=>setEditing(p)}><Pencil size={14}/> Edit</button><button className="table-action" onClick={()=>setPhotoPatient(p)}><ImagePlus size={14}/> Photo</button><form action={setPatientStatus}><input type="hidden" name="patient_id" value={p.id}/><input type="hidden" name="status" value={p.status==="active"?"inactive":"active"}/><input required name="reason" aria-label="Reason" placeholder="Reason"/><button className="table-action">{p.status==="active"?"Archive":"Restore"}</button></form></div></td></tr>)}
       {shown.length===0&&<tr><td colSpan={7} className="empty-state">No matching patients. Search first, then register a new record.</td></tr>}
     </tbody></table></div></section>
     {registering&&<PatientDialog title="Register patient" facilityId={facilityId} referenceOptions={referenceOptions} action={registerPatient} close={()=>setRegistering(false)}/>} 
     {editing&&<PatientDialog title="Edit patient" patient={editing} referenceOptions={referenceOptions} action={updatePatient} close={()=>setEditing(null)}/>} 
+    {photoPatient&&<ProfilePhotoDialog kind="patient" recordId={photoPatient.id} facilityId={facilityId} firstName={photoPatient.first_name} lastName={photoPatient.last_name} photoUrl={photoPatient.profile_photo_url} action={updatePatientPhoto} close={()=>setPhotoPatient(null)}/>}
   </>;
 }
 
