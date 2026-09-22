@@ -45,6 +45,7 @@ Run these scripts after the manual scenario:
 2. `supabase/tests/billing_clearance_invariants.sql`
 3. `supabase/tests/reports_invariants.sql`
 4. `supabase/tests/full_system_uat.sql`
+5. `supabase/tests/admin_rbac_invariants.sql`
 
 Every query must return zero rows. Any returned row is a UAT finding and must be investigated before sign-off.
 
