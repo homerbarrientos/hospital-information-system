@@ -239,3 +239,89 @@ button:disabled{
 .medicine-remove svg{
   color:currentColor;
 }
+
+/* V3.3 — cross-module dialog surface and text normalization */
+.modal{
+  --dialog-surface:#13232f;
+  --dialog-surface-raised:#172a37;
+  --dialog-info:#123b3b;
+  --dialog-warning:#3b2d1d;
+  --dialog-danger:#3b2229;
+}
+.modal form,
+.modal .detail-edit-form{
+  color:#dce5ec!important;
+  background:transparent!important;
+}
+.modal label,
+.modal legend,
+.modal .detail-form label,
+.modal .detail-cancel label{
+  color:#dce5ec!important;
+}
+.modal .detail-form-note,
+.modal .notice{
+  color:#a8ddd6!important;
+  border:1px solid #275d59!important;
+  background:var(--dialog-info)!important;
+}
+.modal .detail-form input[readonly],
+.modal .order-readonly{
+  color:#aab8c5!important;
+  border-color:#344958!important;
+  background:#101e29!important;
+}
+.modal .version-history,
+.modal .encounter-banner span,
+.modal .order-summary-grid>div,
+.modal .order-result-card,
+.modal .saved-result,
+.modal .chart-identity-grid>div,
+.modal .chart-section li,
+.modal .chart-vitals div,
+.modal .chart-note,
+.modal .payment-balance-preview,
+.modal .balance-item,
+.modal .adjustment-comparison span,
+.modal .attachment-card{
+  color:#dce5ec!important;
+  border-color:#304250!important;
+  background:var(--dialog-surface)!important;
+}
+.modal .encounter-banner span,
+.modal .detail-field span,
+.modal .order-summary-grid span,
+.modal .payment-balance-preview span,
+.modal .balance-item span{
+  color:#98a8b7!important;
+}
+.modal .order-cancel-form,
+.modal .reversal-warning,
+.modal .attachment-warning,
+.modal .allergy-panel,
+.modal .chart-alerts span{
+  color:#ffb3bd!important;
+  border-color:#75404a!important;
+  background:var(--dialog-danger)!important;
+}
+.modal .payment-balance-preview.due,
+.modal .balance-item.due{
+  color:#ffd58a!important;
+  border-color:#765c31!important;
+  background:var(--dialog-warning)!important;
+}
+.modal .payment-balance-preview.credit,
+.modal .payment-balance-preview.paid,
+.modal .balance-item.credit,
+.modal .balance-item.paid{
+  color:#8ee3d3!important;
+  border-color:#2b655e!important;
+  background:var(--dialog-info)!important;
+}
+.modal .required-mark{
+  color:#ffb3bd!important;
+  background:var(--dialog-danger)!important;
+}
+.modal .form-actions{
+  border-color:#304250!important;
+}

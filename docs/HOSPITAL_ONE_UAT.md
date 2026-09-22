@@ -29,6 +29,8 @@
 
 Before the transaction cycle, open long forms and nested editors at desktop and mobile widths. Confirm action rows stay inside their own cards, only the dialog footer remains sticky, and no control overlaps another field.
 
+Check every module dialog in the dark theme. Form backgrounds, labels, read-only fields, summary cards, notices, warnings, and sticky actions must remain readable without white panels or low-contrast text.
+
 ## Negative tests
 
 - Attempt duplicate MRN registration.
