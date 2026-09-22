@@ -325,3 +325,24 @@ button:disabled{
 .modal .form-actions{
   border-color:#304250!important;
 }
+
+/* V3.4 — consistent large, responsive dialogs across every module */
+.modal{
+  width:min(1120px,calc(100vw - 32px))!important;
+  max-width:1120px!important;
+  overflow-x:hidden!important;
+}
+.modal > *,
+.modal form,
+.modal fieldset{
+  min-width:0;
+}
+.modal .form-actions{
+  flex-wrap:wrap;
+}
+@media(max-width:760px){
+  .modal{
+    width:calc(100vw - 20px)!important;
+    max-width:calc(100vw - 20px)!important;
+  }
+}
