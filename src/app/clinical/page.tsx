@@ -42,7 +42,7 @@ export default async function Clinical({
 
   let encountersQuery = supabase
     .from("encounters")
-    .select("id,encounter_no,status,service_date,patient_id,responsible_doctor_id", { count: "exact" })
+    .select("id,encounter_no,status,service_date,patient_id,responsible_doctor_id,patients(id,mrn,first_name,last_name,allergies(id,patient_id,substance,reaction,severity,status,version,recorded_at)),clinical_notes(id,encounter_id,note_type,current_version,created_at,clinical_note_versions(note_id,version,content,created_at)),vital_observations(encounter_id,code,value,unit,observed_at),diagnoses(encounter_id,description,diagnosis_type,created_at)", { count: "exact" })
     .eq("facility_id", facilityId)
     .eq("encounter_type", "OPD")
     .order("created_at", { ascending: false })
@@ -61,43 +61,28 @@ export default async function Clinical({
     supabase.from("doctor_facility_assignments").select("doctor_id,doctors(id,first_name,last_name,suffix,specialty,status)").eq("facility_id", facilityId).eq("active", true),
   ]);
 
-  const patientIds = [...new Set((encounters || []).map((encounter) => encounter.patient_id))];
-  const [{ data: patients }, { data: allergies }] = await Promise.all([
-    patientIds.length
-      ? supabase.from("patients").select("id,mrn,first_name,last_name").in("id", patientIds)
-      : Promise.resolve({ data: [] }),
-    patientIds.length
-      ? supabase.from("allergies").select("id,patient_id,substance,reaction,severity,status,version").in("patient_id", patientIds).order("recorded_at", { ascending: false })
-      : Promise.resolve({ data: [] }),
-  ]);
-  const encounterIds = (encounters || []).map((encounter) => encounter.id);
-  let consultationDetails: Array<{
-    encounter_id: string; chief_complaint: string; soap_note: string; diagnosis: string; version: number;
-    vitals: Array<{ code: string; value: number | string; unit: string }>;
-  }> = [];
-
-  if (encounterIds.length) {
-    const [{ data: notes }, { data: vitals }, { data: diagnoses }] = await Promise.all([
-      supabase.from("clinical_notes").select("id,encounter_id,current_version,created_at").in("encounter_id", encounterIds).eq("note_type", "consultation").order("created_at", { ascending: false }),
-      supabase.from("vital_observations").select("encounter_id,code,value,unit,observed_at").in("encounter_id", encounterIds).order("observed_at", { ascending: false }),
-      supabase.from("diagnoses").select("encounter_id,description,created_at").in("encounter_id", encounterIds).eq("diagnosis_type", "working").order("created_at", { ascending: false }),
-    ]);
-    const noteIds = (notes || []).map((note) => note.id);
-    const { data: versions } = noteIds.length
-      ? await supabase.from("clinical_note_versions").select("note_id,version,content,created_at").in("note_id", noteIds).order("version", { ascending: false })
-      : { data: [] };
-
-    consultationDetails = encounterIds.map((encounterId) => {
-      const note = (notes || []).find((item) => item.encounter_id === encounterId);
-      const latestVersion = (versions || []).find((item) => item.note_id === note?.id);
+  const loadedEncounters = encounters || [];
+  const patients = [...new Map(loadedEncounters.flatMap((encounter) => {
+    const patientRelation = encounter.patients;
+    const patient = Array.isArray(patientRelation) ? patientRelation[0] : patientRelation;
+    return patient ? [[patient.id, { id: patient.id, mrn: patient.mrn, first_name: patient.first_name, last_name: patient.last_name }] as const] : [];
+  })).values()];
+  const allergies = loadedEncounters.flatMap((encounter) => {
+    const patientRelation = encounter.patients;
+    const patient = Array.isArray(patientRelation) ? patientRelation[0] : patientRelation;
+    return patient?.allergies || [];
+  }).sort((left, right) => new Date(right.recorded_at).getTime() - new Date(left.recorded_at).getTime()).map((allergy) => ({ id: allergy.id, patient_id: allergy.patient_id, substance: allergy.substance, reaction: allergy.reaction, severity: allergy.severity, status: allergy.status, version: allergy.version }));
+  const consultationDetails = loadedEncounters.map((encounter) => {
+      const note = [...(encounter.clinical_notes || [])].filter((item) => item.note_type === "consultation").sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())[0];
+      const latestVersion = [...(note?.clinical_note_versions || [])].sort((left, right) => right.version - left.version)[0];
       const content = (latestVersion?.content || {}) as { chief_complaint?: string; soap_note?: string };
-      const diagnosis = (diagnoses || []).find((item) => item.encounter_id === encounterId);
+      const diagnosis = [...(encounter.diagnoses || [])].filter((item) => item.diagnosis_type === "working").sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())[0];
       const latestVitals = new Map<string, { code: string; value: number | string; unit: string }>();
-      for (const vital of ((vitals || []) as Vital[]).filter((item) => item.encounter_id === encounterId)) {
+      for (const vital of ([...(encounter.vital_observations || [])] as Vital[]).sort((left, right) => new Date(right.observed_at).getTime() - new Date(left.observed_at).getTime())) {
         if (!latestVitals.has(vital.code)) latestVitals.set(vital.code, { code: vital.code, value: vital.value, unit: vital.unit });
       }
       return {
-        encounter_id: encounterId,
+        encounter_id: encounter.id,
         chief_complaint: content.chief_complaint || "",
         soap_note: content.soap_note || "",
         diagnosis: diagnosis?.description || "",
@@ -105,7 +90,7 @@ export default async function Clinical({
         vitals: Array.from(latestVitals.values()),
       };
     });
-  }
+  const encounterRows = loadedEncounters.map((encounter) => ({ id: encounter.id, encounter_no: encounter.encounter_no, status: encounter.status, service_date: encounter.service_date, patient_id: encounter.patient_id, responsible_doctor_id: encounter.responsible_doctor_id }));
 
   const doctors = (doctorAssignments || []).flatMap((row) => {
     const doctor = Array.isArray(row.doctors) ? row.doctors[0] : row.doctors;
@@ -118,7 +103,7 @@ export default async function Clinical({
     <ClinicalWorkspace
       patients={patients || []}
       allergies={allergies || []}
-      encounters={encounters || []}
+      encounters={encounterRows}
       consultationDetails={consultationDetails}
       facilityId={facilityId}
       doctors={doctors}

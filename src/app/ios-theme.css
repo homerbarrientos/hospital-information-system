@@ -369,3 +369,46 @@ button:disabled{
 .setting-card-value{display:grid;justify-items:end;gap:12px}.setting-card-value strong{max-width:260px;color:#f2f5f8;overflow-wrap:anywhere}
 @media(max-width:1000px){.facility-profile-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.administration-two-column,.settings-grid{grid-template-columns:1fr}}
 @media(max-width:760px){.facility-profile-grid,.admin-form-grid{grid-template-columns:1fr}.admin-form-grid .wide,.admin-form-grid>.form-error,.admin-form-grid>.form-success,.admin-form-grid>.form-actions{grid-column:auto}.setting-card{flex-direction:column}.setting-card-value{justify-items:start}.approval-review{grid-template-columns:1fr}}
+
+/* V3.6 — dark listing controls and paired consultation rows */
+.list-controls{
+  color:#cbd5df;
+  border-color:#2a3946;
+  background:#101e29;
+}
+.list-filter-form{
+  border-color:#2a3946;
+  background:#101e29;
+}
+.list-filter-form label{
+  color:#91a0b0;
+}
+.list-pagination{
+  color:#8f9eae;
+  border-color:#2a3946;
+  background:#101e29;
+}
+.list-pagination strong{
+  color:#e7edf2;
+}
+.list-table-scroll .data-table thead th{
+  color:#8292a3;
+  background:#12202b;
+}
+.data-table tbody tr:has(.empty-state){
+  background:#13202b;
+}
+.consultation-table tbody .consultation-main-row:nth-child(4n + 1),
+.consultation-table tbody .consultation-main-row:nth-child(4n + 1) + .consultation-detail-row{
+  background:rgba(19,31,42,.86);
+}
+.consultation-table tbody .consultation-main-row:nth-child(4n + 3),
+.consultation-table tbody .consultation-main-row:nth-child(4n + 3) + .consultation-detail-row{
+  background:rgba(25,39,51,.96);
+}
+.consultation-table tbody .consultation-main-row:hover,
+.consultation-table tbody .consultation-main-row:hover + .consultation-detail-row,
+.consultation-table tbody .consultation-main-row:has(+ .consultation-detail-row:hover),
+.consultation-table tbody .consultation-detail-row:hover{
+  background:#153b3b;
+}
