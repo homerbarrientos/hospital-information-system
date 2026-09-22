@@ -15,7 +15,10 @@ export default async function Patients() {
   ]);
   const facilityId = assignments?.[0]?.facility_id;
   if (!facilityId) return <AppShell><PageHeading eyebrow="Access required" title="No facility assignment" description="Ask an administrator to assign your account to a facility and role."/><div className="form-error">This user cannot access patient records yet.</div></AppShell>;
-  const referenceOptions = (options || []).map((option) => ({ code: option.code, label: option.label, group: option.reference_groups[0]?.code }));
+  const referenceOptions = (options || []).map((option) => {
+    const relation = Array.isArray(option.reference_groups) ? option.reference_groups[0] : option.reference_groups;
+    return { code: option.code, label: option.label, group: relation?.code };
+  });
   const photoPaths = (patients || []).flatMap(patient => patient.profile_photo_path ? [patient.profile_photo_path] : []);
   const { data: signedPhotos } = photoPaths.length
     ? await supabase.storage.from("profile-photos").createSignedUrls(photoPaths, 3600)
