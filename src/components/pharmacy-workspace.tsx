@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { CheckCircle2, ChevronRight, FilePenLine, FilePlus2, Paperclip, Pill, Plus, Trash2, X } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -31,13 +31,8 @@ export function PharmacyWorkspace({ prescriptions, encounters, patients, items, 
   prescriptions:Prescription[];encounters:Encounter[];patients:Patient[];items:Item[];products:Product[];dispenses:Dispense[];lots:Lot[];doctors:Doctor[];references:Reference[];documents:Document[];listState:ListState;
 }) {
   const [creating,setCreating]=useState(false);
-  const [selected,setSelected]=useState<Prescription|null>(null);
-  useEffect(()=>{
-    if(!selected)return;
-    const refreshed=prescriptions.find(prescription=>prescription.id===selected.id);
-    if(!refreshed)setSelected(null);
-    else if(refreshed!==selected)setSelected(refreshed);
-  },[prescriptions,selected]);
+  const [selectedId,setSelectedId]=useState<string|null>(null);
+  const selected=prescriptions.find(prescription=>prescription.id===selectedId)||null;
   const encounterFor=(prescription:Prescription)=>encounters.find(encounter=>encounter.id===prescription.encounter_id);
   const patientFor=(prescription:Prescription)=>patients.find(patient=>patient.id===encounterFor(prescription)?.patient_id);
   return <>
@@ -55,12 +50,12 @@ export function PharmacyWorkspace({ prescriptions, encounters, patients, items, 
           <td>{doctorLabel(doctors.find(doctor=>doctor.id===prescription.prescribing_doctor_id))}</td>
           <td>{prescriptionItems.map(item=>products.find(product=>product.id===item.product_id)?.name||"Medicine").join(", ")||"No medicines"}</td>
           <td><span className={`badge ${prescription.status==="dispensed"?"green":prescription.status==="cancelled"?"red":prescription.status==="validated"?"blue":"amber"}`}>{prescription.status.replaceAll("_"," ")}</span></td>
-          <td><button className="btn btn-secondary" onClick={()=>setSelected(prescription)}>View / manage <ChevronRight size={14}/></button></td>
+          <td><button className="btn btn-secondary" onClick={()=>setSelectedId(prescription.id)}>View / manage <ChevronRight size={14}/></button></td>
         </tr>})}{!prescriptions.length?<tr><td className="empty-state" colSpan={6}>No prescriptions match the selected filters.</td></tr>:null}</tbody>
       </table></div>
     </section>
     {creating?<PrescriptionForm mode="create" doctors={doctors} references={references} close={()=>setCreating(false)}/>:null}
-    {selected?<PrescriptionDetail prescription={selected} encounter={encounterFor(selected)} patient={patientFor(selected)} items={items.filter(item=>item.prescription_id===selected.id)} products={products} dispenses={dispenses} lots={lots} doctors={doctors} references={references} documents={documents.filter(document=>document.prescription_id===selected.id)} close={()=>setSelected(null)}/>:null}
+    {selected?<PrescriptionDetail prescription={selected} encounter={encounterFor(selected)} patient={patientFor(selected)} items={items.filter(item=>item.prescription_id===selected.id)} products={products} dispenses={dispenses} lots={lots} doctors={doctors} references={references} documents={documents.filter(document=>document.prescription_id===selected.id)} close={()=>setSelectedId(null)}/>:null}
   </>;
 }
 
