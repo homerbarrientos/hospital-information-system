@@ -40,7 +40,7 @@ export default async function Orders({
 
   let ordersQuery = supabase
     .from("clinical_orders")
-    .select("id,encounter_id,order_no,order_type,priority,status,ordered_at,instructions,version,cancellation_reason,ordering_doctor_id,encounters!inner(facility_id,patient_id)", { count: "exact" })
+    .select("id,encounter_id,order_no,order_type,priority,status,ordered_at,instructions,version,cancellation_reason,ordering_doctor_id,encounters!inner(id,facility_id,patient_id,encounter_no,status,service_date,encounter_type,responsible_doctor_id,patients(id,mrn,first_name,last_name)),order_items(id,order_id,service_id,description,status,charge_on,clinical_results(id,order_item_id,result_text,status,entered_at,validated_at,correction_reason))", { count: "exact" })
     .eq("encounters.facility_id", facilityId)
     .order("ordered_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
@@ -59,22 +59,24 @@ export default async function Orders({
     supabase.from("reference_options").select("code,label,reference_groups!inner(code)").in("reference_groups.code", ["order_type", "order_priority", "order_charge_trigger"]).eq("active", true).order("sort_order"),
   ]);
 
-  const encounterIds = (orders || []).map((order) => order.encounter_id);
-  const { data: encounters } = encounterIds.length
-    ? await supabase.from("encounters").select("id,encounter_no,patient_id,status,service_date,encounter_type,responsible_doctor_id").in("id", encounterIds)
-    : { data: [] };
-  const patientIds = [...new Set((encounters || []).map((encounter) => encounter.patient_id))];
-  const { data: patients } = patientIds.length
-    ? await supabase.from("patients").select("id,mrn,first_name,last_name").in("id", patientIds)
-    : { data: [] };
-  const orderIds = (orders || []).map((order) => order.id);
-  const { data: items } = orderIds.length
-    ? await supabase.from("order_items").select("id,order_id,service_id,description,status,charge_on").in("order_id", orderIds)
-    : { data: [] };
-  const itemIds = (items || []).map((item) => item.id);
-  const { data: results } = itemIds.length
-    ? await supabase.from("clinical_results").select("id,order_item_id,result_text,status,entered_at,validated_at,correction_reason").in("order_item_id", itemIds).order("entered_at", { ascending: false })
-    : { data: [] };
+  const loadedOrders=orders||[];
+  const encounterRows=loadedOrders.flatMap(order=>{
+    const encounter=Array.isArray(order.encounters)?order.encounters[0]:order.encounters;
+    if(!encounter)return[];
+    return[{id:encounter.id,encounter_no:encounter.encounter_no,patient_id:encounter.patient_id,status:encounter.status,service_date:encounter.service_date,encounter_type:encounter.encounter_type,responsible_doctor_id:encounter.responsible_doctor_id}];
+  });
+  const patientRows=loadedOrders.flatMap(order=>{
+    const encounter=Array.isArray(order.encounters)?order.encounters[0]:order.encounters;
+    if(!encounter)return[];
+    const patient=Array.isArray(encounter.patients)?encounter.patients[0]:encounter.patients;
+    return patient?[patient]:[];
+  });
+  const items=loadedOrders.flatMap(order=>order.order_items||[]);
+  const results=items.flatMap(item=>item.clinical_results||[]).sort((left,right)=>new Date(right.entered_at).getTime()-new Date(left.entered_at).getTime());
+  const encounters=[...new Map(encounterRows.map(encounter=>[encounter.id,encounter])).values()];
+  const patients=[...new Map(patientRows.map(patient=>[patient.id,patient])).values()];
+  const orderRows=loadedOrders.map(order=>({id:order.id,encounter_id:order.encounter_id,order_no:order.order_no,order_type:order.order_type,priority:order.priority,status:order.status,ordered_at:order.ordered_at,instructions:order.instructions,version:order.version,cancellation_reason:order.cancellation_reason,ordering_doctor_id:order.ordering_doctor_id}));
+  const itemRows=items.map(item=>({id:item.id,order_id:item.order_id,service_id:item.service_id,description:item.description,status:item.status,charge_on:item.charge_on}));
 
   const doctors = (doctorAssignments || []).flatMap((row) => {
     const doctor = Array.isArray(row.doctors) ? row.doctors[0] : row.doctors;
@@ -87,9 +89,9 @@ export default async function Orders({
     <OrdersWorkspace
       patients={patients || []}
       encounters={encounters || []}
-      orders={orders || []}
-      items={items || []}
-      results={results || []}
+      orders={orderRows}
+      items={itemRows}
+      results={results}
       doctors={doctors}
       referenceOptions={referenceOptions || []}
       listState={{ query, status, date, page, total: count || 0, pageSize: PAGE_SIZE }}
