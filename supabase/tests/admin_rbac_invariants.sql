@@ -35,3 +35,23 @@ from public.roles r
 cross join public.privileges p
 where r.name='Hospital Administrator'
 and not exists(select 1 from public.role_privileges rp where rp.role_id=r.id and rp.privilege_code=p.code);
+
+-- Employee ID identities require a unique normalized login key and employee number.
+select id,employee_no,employee_login_key
+from public.profiles
+where login_method='employee_id'
+and (nullif(trim(employee_no),'') is null or employee_login_key is distinct from lower(trim(employee_no)));
+
+-- Email identities must not expose an employee login key.
+select id,email,employee_login_key
+from public.profiles
+where login_method='email' and employee_login_key is not null;
+
+-- Forced-password accounts must not retain effective facility privileges.
+select distinct p.id,ur.facility_id,rp.privilege_code
+from public.profiles p
+join public.user_roles ur on ur.user_id=p.id and ur.active
+join public.role_privileges rp on rp.role_id=ur.role_id
+where p.must_change_password
+and public.has_privilege(rp.privilege_code,ur.facility_id)
+and p.id=auth.uid();

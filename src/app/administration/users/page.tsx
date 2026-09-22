@@ -19,7 +19,7 @@ export default async function UsersPage() {
   ]);
   const staffIds = [...new Set((assignments || []).map((row) => row.user_id))];
   const { data: profiles, error: profileError } = staffIds.length
-    ? await supabase.from("profiles").select("id,full_name,employee_no,email,status,version,created_at").in("id", staffIds).order("full_name")
+    ? await supabase.from("profiles").select("id,full_name,employee_no,email,login_method,must_change_password,status,version,created_at").in("id", staffIds).order("full_name")
     : { data: [], error: null };
   const members = (profiles || []).map((profile) => ({
     ...profile,
@@ -27,7 +27,7 @@ export default async function UsersPage() {
   }));
   const loadError = assignmentError || roleError || departmentError || profileError;
   return <>
-    <PageHeading eyebrow="Identity administration" title="Users and staff" description="Invite named accounts, assign facility roles and departments, and deactivate access without deleting history."/>
+    <PageHeading eyebrow="Identity administration" title="Users and staff" description="Create Employee ID accounts or email invitations, assign facility roles, and preserve named accountability."/>
     {loadError ? <div className="form-error">Unable to load staff administration: {loadError.message}</div> : null}
     <UsersWorkspace currentUserId={userId} facilityId={facilityId} members={members} roles={roles || []} departments={departments || []}/>
   </>;
