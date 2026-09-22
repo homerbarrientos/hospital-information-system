@@ -21,7 +21,7 @@ export default async function Pharmacy({ searchParams }: {
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims.sub;
   if (!userId) redirect("/login");
-  const { data: roles } = await supabase.from("user_roles").select("facility_id").eq("user_id", userId).eq("active", true).limit(1);
+  const { data: roles } = await supabase.from("user_roles").select("facility_id,facilities(organization_id)").eq("user_id", userId).eq("active", true).limit(1);
   const facilityId = roles?.[0]?.facility_id;
   if (!facilityId) return <div className="form-error">No active facility assignment.</div>;
 
@@ -32,7 +32,7 @@ export default async function Pharmacy({ searchParams }: {
   }
   let prescriptionQuery = supabase
     .from("prescriptions")
-    .select("id,encounter_id,prescription_no,status,prescribed_at,prescribing_doctor_id,notes,cancellation_reason,version,encounters!inner(facility_id,patient_id)", { count: "exact" })
+    .select("id,encounter_id,prescription_no,status,prescribed_at,prescribing_doctor_id,notes,cancellation_reason,version,encounters!inner(id,facility_id,patient_id,encounter_no,encounter_type,service_date,patients(id,mrn,first_name,last_name)),prescription_items(id,prescription_id,product_id,dose,route,frequency,duration,quantity,instructions,products(id,code,name,unit),dispenses(id,prescription_item_id,stock_lot_id,quantity,status,dispensed_at)),prescription_documents(id,prescription_id,storage_path,display_name,description,mime_type,size_bytes,uploaded_at,status)", { count: "exact" })
     .eq("encounters.facility_id", facilityId)
     .order("prescribed_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
@@ -47,27 +47,36 @@ export default async function Pharmacy({ searchParams }: {
     supabase.from("reference_options").select("code,label,reference_groups!inner(code)").in("reference_groups.code", ["medication_route", "medication_frequency"]).eq("active", true).order("sort_order"),
   ]);
 
-  const prescriptionIds = (prescriptions || []).map((record) => record.id);
-  const encounterIds = (prescriptions || []).map((record) => record.encounter_id);
-  const [{ data: encounters }, { data: items }, { data: documents }] = await Promise.all([
-    encounterIds.length ? supabase.from("encounters").select("id,encounter_no,patient_id,encounter_type,service_date").in("id", encounterIds) : Promise.resolve({ data: [] }),
-    prescriptionIds.length ? supabase.from("prescription_items").select("id,prescription_id,product_id,dose,route,frequency,duration,quantity,instructions").in("prescription_id", prescriptionIds) : Promise.resolve({ data: [] }),
-    prescriptionIds.length ? supabase.from("prescription_documents").select("id,prescription_id,storage_path,display_name,description,mime_type,size_bytes,uploaded_at").in("prescription_id", prescriptionIds).eq("status", "active").order("uploaded_at", { ascending: false }) : Promise.resolve({ data: [] }),
-  ]);
-  const currentPatientIds = [...new Set((encounters || []).map((encounter) => encounter.patient_id))];
+  const loadedPrescriptions = prescriptions || [];
+  const encounterRows = loadedPrescriptions.flatMap((record) => {
+    const encounter = Array.isArray(record.encounters) ? record.encounters[0] : record.encounters;
+    return encounter ? [{ id: encounter.id, encounter_no: encounter.encounter_no, patient_id: encounter.patient_id, encounter_type: encounter.encounter_type, service_date: encounter.service_date }] : [];
+  });
+  const patientRows = loadedPrescriptions.flatMap((record) => {
+    const encounter = Array.isArray(record.encounters) ? record.encounters[0] : record.encounters;
+    if (!encounter) return [];
+    const patient = Array.isArray(encounter.patients) ? encounter.patients[0] : encounter.patients;
+    return patient ? [patient] : [];
+  });
+  const nestedItems = loadedPrescriptions.flatMap((record) => record.prescription_items || []);
+  const productRows = nestedItems.flatMap((item) => {
+    const product = Array.isArray(item.products) ? item.products[0] : item.products;
+    return product ? [product] : [];
+  });
+  const dispenses = nestedItems.flatMap((item) => item.dispenses || []);
+  const documents = loadedPrescriptions.flatMap((record) => record.prescription_documents || []).filter((document) => document.status === "active").sort((left, right) => new Date(right.uploaded_at).getTime() - new Date(left.uploaded_at).getTime());
+  const encounters = [...new Map(encounterRows.map((encounter) => [encounter.id, encounter])).values()];
+  const patients = [...new Map(patientRows.map((patient) => [patient.id, patient])).values()];
+  const products = [...new Map(productRows.map((product) => [product.id, product])).values()];
+  const items = nestedItems.map((item) => ({ id: item.id, prescription_id: item.prescription_id, product_id: item.product_id, dose: item.dose, route: item.route, frequency: item.frequency, duration: item.duration, quantity: item.quantity, instructions: item.instructions }));
   const productIds = [...new Set((items || []).map((item) => item.product_id))];
-  const itemIds = (items || []).map((item) => item.id);
-  const [{ data: patients }, { data: products }, { data: dispenses }, { data: lots }] = await Promise.all([
-    currentPatientIds.length ? supabase.from("patients").select("id,mrn,first_name,last_name").in("id", currentPatientIds) : Promise.resolve({ data: [] }),
-    productIds.length ? supabase.from("products").select("id,code,name,unit").in("id", productIds) : Promise.resolve({ data: [] }),
-    itemIds.length ? supabase.from("dispenses").select("id,prescription_item_id,stock_lot_id,quantity,status,dispensed_at").in("prescription_item_id", itemIds) : Promise.resolve({ data: [] }),
-    productIds.length ? supabase.from("stock_lots").select("id,product_id,lot_no,expiry_date,quantity_on_hand,store_id,stores!inner(facility_id,name)").in("product_id", productIds).eq("stores.facility_id", facilityId).gt("quantity_on_hand", 0).order("expiry_date") : Promise.resolve({ data: [] }),
-  ]);
+  const { data: lots } = productIds.length ? await supabase.from("stock_lots").select("id,product_id,lot_no,expiry_date,quantity_on_hand,store_id,stores!inner(facility_id,name)").in("product_id", productIds).eq("stores.facility_id", facilityId).gt("quantity_on_hand", 0).order("expiry_date") : { data: [] };
 
-  const documentRows = await Promise.all((documents || []).map(async (document) => {
-    const { data: signed } = await supabase.storage.from("pharmacy-documents").createSignedUrl(document.storage_path, 600);
-    return { ...document, url: signed?.signedUrl || "" };
-  }));
+  const documentPaths = documents.map((document) => document.storage_path);
+  const { data: signedDocuments } = documentPaths.length ? await supabase.storage.from("pharmacy-documents").createSignedUrls(documentPaths, 600) : { data: [] };
+  const signedDocumentMap = new Map((signedDocuments || []).map((document) => [document.path, document.signedUrl]));
+  const documentRows = documents.map((document) => ({ id: document.id, prescription_id: document.prescription_id, storage_path: document.storage_path, display_name: document.display_name, description: document.description, mime_type: document.mime_type, size_bytes: document.size_bytes, uploaded_at: document.uploaded_at, url: signedDocumentMap.get(document.storage_path) || "" }));
+  const prescriptionRows = loadedPrescriptions.map((record) => ({ id: record.id, encounter_id: record.encounter_id, prescription_no: record.prescription_no, status: record.status, prescribed_at: record.prescribed_at, prescribing_doctor_id: record.prescribing_doctor_id, notes: record.notes, cancellation_reason: record.cancellation_reason, version: record.version }));
   const doctors = (doctorAssignments || []).flatMap((row) => {
     const doctor = Array.isArray(row.doctors) ? row.doctors[0] : row.doctors;
     return doctor && doctor.status === "active" ? [doctor] : [];
@@ -77,8 +86,8 @@ export default async function Pharmacy({ searchParams }: {
     <PageHeading eyebrow="Medication workflow" title="Pharmacy" description="Validate prescriptions, dispense by lot and expiry, manage documents, and preserve an audited medication history."/>
     {error && <div className="form-error">Unable to load prescriptions: {error.message}</div>}
     <PharmacyWorkspace
-      prescriptions={prescriptions || []} encounters={encounters || []} patients={patients || []}
-      items={items || []} products={products || []} dispenses={dispenses || []} lots={lots || []}
+      prescriptions={prescriptionRows} encounters={encounters} patients={patients}
+      items={items} products={products} dispenses={dispenses} lots={lots || []}
       doctors={doctors} references={references || []} documents={documentRows}
       listState={{ query, status, date, page, total: count || 0, pageSize: PAGE_SIZE }}
     />
