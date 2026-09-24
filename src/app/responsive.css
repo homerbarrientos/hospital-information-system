@@ -19,6 +19,7 @@
   .facility{min-width:0}
   .facility strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .top-actions{gap:5px;flex:none}
+  .top-actions .icon-btn,.mobile-nav-close{width:44px;height:44px}
   .content{padding:18px 12px 30px}
   .page-heading{align-items:stretch;gap:14px}
   .page-heading>.btn,.page-heading>form,.page-heading>.toolbar{align-self:flex-start}
@@ -41,15 +42,20 @@
 @media(max-width:420px){
   .topbar{padding:0 10px}
   .top-actions{gap:4px}
-  .top-actions .icon-btn{width:36px;height:40px}
+  .top-actions .icon-btn{width:44px;height:44px}
   .content{padding-inline:10px}
   .page-heading h2{font-size:24px}
   .form-actions .btn{min-height:44px}
   .skeleton-line.heading{max-width:100%}
+  .auth-page{padding:12px}
+  .auth-card{padding:20px 16px}
+  .auth-card .form-actions{align-items:stretch;flex-direction:column}
+  .auth-card .form-actions .btn{width:100%}
 }
 
 /* Keep module controls usable at phone widths, including the 320px viewport. */
 @media(max-width:760px){
+  .auth-page input:not([type="checkbox"]):not([type="radio"]){font-size:16px}
   .content > *,
   .content .card-header > *,
   .content .page-heading > *,
