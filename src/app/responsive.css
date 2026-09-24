@@ -45,4 +45,53 @@
   .form-actions .btn{min-height:44px}
 }
 
+/* Keep module controls usable at phone widths, including the 320px viewport. */
+@media(max-width:760px){
+  .content > *,
+  .content .card-header > *,
+  .content .page-heading > *,
+  .content .toolbar > *,
+  .modal > *,
+  .modal form > *{min-width:0}
+
+  .content input:not([type="checkbox"]):not([type="radio"]),
+  .content select,
+  .content textarea,
+  .modal input:not([type="checkbox"]):not([type="radio"]),
+  .modal select,
+  .modal textarea{max-width:100%;font-size:16px}
+
+  .content .btn,
+  .modal .btn,
+  .content .icon-btn,
+  .modal .icon-btn{min-height:44px}
+
+  .reference-toolbar label,
+  .reference-toolbar select,
+  .report-toolbar input,
+  .registry-toolbar label,
+  .master-toolbar label{width:100%;min-width:0;max-width:100%}
+  .search-picker-filters,
+  .master-tabs,
+  .registry-tabs,
+  .registry-actions,
+  .billing-actions{flex-wrap:wrap}
+  .registry-pagination > div,
+  .master-pagination > div,
+  .search-picker-footer > div{flex-wrap:wrap}
+  .registry-record > *,
+  .timeline-row > *,
+  .coverage-request > *,
+  .setting-card > *{min-width:0;overflow-wrap:anywhere}
+}
+
+@media(max-width:420px){
+  .modal-head,.modal-header{gap:8px;padding-inline:14px}
+  .modal-head h3,.modal-header h3{overflow-wrap:anywhere}
+  .modal .form-actions{justify-content:stretch}
+  .modal .form-actions > .btn{flex:1 1 125px}
+  .search-picker-filters button{min-height:44px}
+  .report-tabs,.inventory-tabs{max-width:100%;overscroll-behavior-x:contain}
+}
+
 @media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
