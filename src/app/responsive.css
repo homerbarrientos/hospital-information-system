@@ -1,0 +1,48 @@
+/* Shared tablet and phone layout for Hospital ONE, 2026-09-24. */
+.sidebar-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.mobile-nav-toggle,.mobile-nav-close,.mobile-nav-backdrop{display:none}
+
+@media(max-width:760px){
+  .app-shell{display:block;padding:0;min-width:0}
+  .app-main,.content,.card,.page-heading,.toolbar{min-width:0}
+  .sidebar{position:fixed;inset:0 auto 0 0;z-index:21;width:min(320px,86vw);height:100dvh;max-height:100dvh;transform:translateX(-105%);visibility:hidden;transition:transform .2s ease,visibility .2s ease;border-radius:0;border:0;border-right:1px solid var(--line);padding:18px 14px;overflow-y:auto;overscroll-behavior:contain;background:#0c1b26;box-shadow:12px 0 32px #0008}
+  .sidebar.mobile-nav-open{transform:translateX(0);visibility:visible}
+  .mobile-nav-backdrop{display:block;position:fixed;inset:0;z-index:20;width:100%;border:0;background:#030b13b8;cursor:pointer}
+  .mobile-nav-toggle,.mobile-nav-close{display:grid;flex:none}
+  .sidebar-header .brand{min-width:0;padding:5px 2px 18px}
+  .sidebar .nav-label,.sidebar .profile-card{display:flex}
+  .sidebar .nav-list,.sidebar .nav-list:nth-of-type(2){display:grid;overflow:visible;gap:3px}
+  .sidebar .nav-item{white-space:normal;min-height:44px}
+  .sidebar .profile-card{margin-top:20px}
+  .topbar{height:64px;gap:8px;padding:0 12px}
+  .facility{min-width:0}
+  .facility strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top-actions{gap:5px;flex:none}
+  .content{padding:18px 12px 30px}
+  .page-heading{align-items:stretch;gap:14px}
+  .page-heading>.btn,.page-heading>form,.page-heading>.toolbar{align-self:flex-start}
+  .card-header{flex-wrap:wrap;gap:10px}
+  .toolbar .search,.search{min-width:0}
+  .toolbar .filter{min-width:0;max-width:100%}
+  .table-wrap,.list-table-scroll,.billing-table-scroll,.queue-table-scroll,.registry-scroll,.charge-table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+  .data-table{width:max-content;min-width:100%}
+  .modal{width:calc(100vw - 20px)!important;max-width:calc(100vw - 20px)!important}
+  .modal form,.modal fieldset,.modal .card,.modal .search-picker-body{min-width:0;max-width:100%}
+  .modal .form-actions{gap:8px;flex-wrap:wrap}
+  .search-picker-grid{min-width:0;overflow-x:auto}
+  .search-picker-row{min-width:0;overflow-wrap:anywhere}
+  .search-picker-footer{min-width:0}
+  .search-picker-footer>div{flex-wrap:wrap}
+  .picker-confirm-strip>div:last-child{flex-wrap:wrap}
+}
+
+@media(max-width:420px){
+  .topbar{padding:0 10px}
+  .top-actions{gap:4px}
+  .top-actions .icon-btn{width:36px;height:40px}
+  .content{padding-inline:10px}
+  .page-heading h2{font-size:24px}
+  .form-actions .btn{min-height:44px}
+}
+
+@media(prefers-reduced-motion:reduce){.sidebar{transition:none}}

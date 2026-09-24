@@ -17,6 +17,7 @@ import "./charge-master.css";
 import "./clinical-registry.css";
 import "./reports.css";
 import "./ios-theme.css";
+import "./responsive.css";
 import{RootShell}from"@/components/root-shell";
 
 export const metadata: Metadata = {
