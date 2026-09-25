@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { PageHeading } from "@/components/app-shell";
-import { OperationWorkspace, type OperationRow, type EncounterOption, type MaterialOption, type SupplierOption, type DoctorOption, type ServiceOption } from "@/components/operation-workspace";
+import { OperationWorkspace, type OperationRow, type EncounterOption, type MaterialOption, type SupplierOption, type DoctorOption, type ServiceOption, type ProcedureRoomOption } from "@/components/operation-workspace";
 import { createClient } from "@/lib/supabase/server";
 
 const descriptions = {
@@ -28,7 +28,7 @@ export default async function OperationsPage({ params, searchParams }: { params:
   const table = kind === "or" || kind === "dr" ? "care_cases" : kind === "dietary" ? "diet_orders" : kind === "materials" ? "material_items" : kind === "purchasing" ? "purchase_orders" : "phic_claims";
   let recordsQuery = supabase.from(table).select("*").eq("facility_id", facilityId).limit(200);
   if (kind === "or" || kind === "dr") recordsQuery = recordsQuery.eq("case_type", kind.toUpperCase());
-  const [recordsResult, encountersResult, materialsResult, suppliersResult, doctorsResult, movementsResult, servicesResult] = await Promise.all([
+  const [recordsResult, encountersResult, materialsResult, suppliersResult, doctorsResult, movementsResult, servicesResult, roomsResult] = await Promise.all([
     recordsQuery.order("created_at", { ascending: false }),
     supabase.from("encounters").select("id,encounter_no,patient_id,status,patients(first_name,last_name,mrn,philhealth_no)").eq("facility_id", facilityId).order("created_at", { ascending: false }).limit(500),
     kind === "materials" || kind === "purchasing" ? supabase.from("material_items").select("id,code,name,unit,quantity_on_hand").eq("facility_id", facilityId).eq("status", "active").order("name") : Promise.resolve({ data: [] as MaterialOption[], error: null }),
@@ -36,8 +36,9 @@ export default async function OperationsPage({ params, searchParams }: { params:
     kind === "or" || kind === "dr" ? supabase.from("doctor_facility_assignments").select("doctor_id,doctors(id,first_name,last_name)").eq("facility_id", facilityId).eq("active", true) : Promise.resolve({ data: [], error: null }),
     kind === "materials" ? supabase.from("material_movements").select("id,item_id,kind,quantity,balance_after,reference_no,created_at,encounter_id").eq("facility_id", facilityId).order("created_at", { ascending: false }).limit(100) : Promise.resolve({ data: [], error: null }),
     ["materials", "or", "dr"].includes(kind) ? supabase.from("service_catalog").select("id,code,name").eq("organization_id", facility?.organization_id || "00000000-0000-0000-0000-000000000000").eq("status", "active").eq("billable", true).order("name") : Promise.resolve({ data: [] as ServiceOption[], error: null }),
+    kind === "or" || kind === "dr" ? supabase.from("procedure_rooms").select("id,code,name,room_kind").eq("facility_id", facilityId).eq("room_kind", kind.toUpperCase()).eq("status", "active").order("code") : Promise.resolve({ data: [] as ProcedureRoomOption[], error: null }),
   ]);
-  const errors = [recordsResult.error, encountersResult.error, materialsResult.error, suppliersResult.error, doctorsResult.error, movementsResult.error, servicesResult.error].filter(Boolean);
+  const errors = [recordsResult.error, encountersResult.error, materialsResult.error, suppliersResult.error, doctorsResult.error, movementsResult.error, servicesResult.error, roomsResult.error].filter(Boolean);
   const encounters: EncounterOption[] = (encountersResult.data || []).map(row => {
     const patient = Array.isArray(row.patients) ? row.patients[0] : row.patients;
     return { id: row.id, label: `${row.encounter_no} · ${patient?.last_name || "Patient"}, ${patient?.first_name || ""} · ${patient?.mrn || ""}`, status: row.status, philhealth_no: patient?.philhealth_no || null };
@@ -54,6 +55,6 @@ export default async function OperationsPage({ params, searchParams }: { params:
   return <>
     <PageHeading eyebrow="Hospital operations" title={title} description={description} />
     {errors.length ? <div className="form-error">Unable to load module data: {errors[0]?.message}. Apply the new Supabase migration before using this module.</div> : null}
-    {!errors.length ? <OperationWorkspace section={kind} facilityId={facilityId} records={(recordsResult.data || []) as OperationRow[]} encounters={encounters} materials={(materialsResult.data || []) as MaterialOption[]} suppliers={(suppliersResult.data || []) as SupplierOption[]} doctors={doctors} movements={(movementsResult.data || []) as OperationRow[]} services={(servicesResult.data || []) as ServiceOption[]} prefillMaterial={prefillMaterial} prefillQuantity={prefillQuantity} /> : null}
+    {!errors.length ? <OperationWorkspace section={kind} facilityId={facilityId} records={(recordsResult.data || []) as OperationRow[]} encounters={encounters} materials={(materialsResult.data || []) as MaterialOption[]} suppliers={(suppliersResult.data || []) as SupplierOption[]} doctors={doctors} movements={(movementsResult.data || []) as OperationRow[]} services={(servicesResult.data || []) as ServiceOption[]} rooms={(roomsResult.data || []) as ProcedureRoomOption[]} prefillMaterial={prefillMaterial} prefillQuantity={prefillQuantity} /> : null}
   </>;
 }

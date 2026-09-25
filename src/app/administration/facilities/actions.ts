@@ -43,3 +43,15 @@ export async function saveBed(_:FacilityState,form:FormData){
  const editing=Boolean(value(form,"bed_id"));
  return call("save_bed",{target_facility:value(form,"facility_id"),target_bed:uuidOrNull(form,"bed_id"),target_ward:value(form,"ward_id"),bed_code:value(form,"code"),bed_type_name:value(form,"bed_type"),bed_daily_rate:Number(value(form,"daily_rate")||0),bed_gender:value(form,"gender_restriction")||"any",bed_age_group:value(form,"age_group")||"any",bed_isolation:value(form,"isolation_capable")==="on",next_status:value(form,"status")||"available",expected_version:Number(value(form,"version")||0),change_reason:value(form,"reason")},editing?"Bed updated.":"Bed created.");
 }
+
+export async function saveProcedureRoom(_:FacilityState,form:FormData){
+ if(!["OR","DR"].includes(value(form,"room_kind"))||value(form,"code").length<2||value(form,"name").length<2)return initialFail("Choose OR or DR and enter a room code and name.");
+ const editing=Boolean(value(form,"room_id"));
+ const result=await call("save_procedure_room",{target_facility:value(form,"facility_id"),target_room:uuidOrNull(form,"room_id"),target_kind:value(form,"room_kind"),room_code:value(form,"code"),room_label:value(form,"name"),expected_version:Number(value(form,"version")||0),change_reason:value(form,"reason")},editing?"Room updated.":"Room created.");
+ if(result.ok){revalidatePath("/operations/or");revalidatePath("/operations/dr");}return result;
+}
+
+export async function changeProcedureRoomStatus(_:FacilityState,form:FormData){
+ const result=await call("set_procedure_room_status",{target_facility:value(form,"facility_id"),target_room:value(form,"room_id"),next_status:value(form,"status"),change_reason:value(form,"reason")},"Room status updated.");
+ if(result.ok){revalidatePath("/operations/or");revalidatePath("/operations/dr");}return result;
+}
