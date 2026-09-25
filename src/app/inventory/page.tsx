@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { PageHeading } from "@/components/app-shell";
 import { InventoryWorkspace } from "@/components/inventory-workspace";
+import { InventoryModuleNav } from "@/components/inventory-module-nav";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function Inventory(){
@@ -16,5 +17,5 @@ export default async function Inventory(){
  ]);
  const movementIds=(movements||[]).map(movement=>movement.id);const{data:documentRows}=movementIds.length?await supabase.from("inventory_documents").select("id,movement_id,storage_path,display_name,description,uploaded_at").in("movement_id",movementIds).eq("status","active").order("uploaded_at",{ascending:false}):{data:[]};
  const paths=(documentRows||[]).map(document=>document.storage_path),{data:signedRows}=paths.length?await supabase.storage.from("inventory-documents").createSignedUrls(paths,600):{data:[]};const signedMap=new Map((signedRows||[]).map(row=>[row.path,row.signedUrl]));const documents=(documentRows||[]).map(document=>({...document,url:signedMap.get(document.storage_path)||""}));
- return <><PageHeading eyebrow="Stock control" title="Inventory" description="Receive medicines by lot and expiry, monitor stock levels, and preserve a complete audited movement history."/>{lotError||movementError?<div className="form-error">Unable to load inventory: {(lotError||movementError)?.message}</div>:null}<InventoryWorkspace facilityId={facilityId} currentDate={new Date().toISOString().slice(0,10)} products={products||[]} stores={stores||[]} suppliers={suppliers||[]} lots={lots||[]} movements={movements||[]} references={references||[]} documents={documents}/></>;
+ return <><PageHeading eyebrow="Stock control" title="Inventory" description="Receive medicines by lot and expiry, monitor stock levels, and preserve a complete audited movement history."/><InventoryModuleNav current="/inventory"/>{lotError||movementError?<div className="form-error">Unable to load inventory: {(lotError||movementError)?.message}</div>:null}<InventoryWorkspace facilityId={facilityId} currentDate={new Date().toISOString().slice(0,10)} products={products||[]} stores={stores||[]} suppliers={suppliers||[]} lots={lots||[]} movements={movements||[]} references={references||[]} documents={documents}/></>;
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { SearchPicker } from "@/components/search-picker";
+import { InventoryModuleNav } from "@/components/inventory-module-nav";
 import { saveOperation, type OperationState } from "@/app/operations/[section]/actions";
 
 type Section = "or" | "dr" | "dietary" | "materials" | "purchasing" | "philhealth";
@@ -37,7 +38,7 @@ function EncounterField({ encounters }: { encounters: EncounterOption[] }) {
   return <><SearchPicker kind="encounter" name="encounter_id" label="Patient encounter" title="Select patient encounter" placeholder="Select an active encounter" searchPlaceholder="Search patient, MRN, or encounter" required/><small>{encounters.filter(e => e.status !== "completed" && e.status !== "cancelled").length} recent active encounters available.</small></>;
 }
 
-function CreateForm({ section, facilityId, encounters, materials, suppliers, doctors, services }: { section: Section; facilityId: string; encounters: EncounterOption[]; materials: MaterialOption[]; suppliers: SupplierOption[]; doctors: DoctorOption[]; services: ServiceOption[] }) {
+function CreateForm({ section, facilityId, encounters, materials, suppliers, doctors, services, prefillMaterial, prefillQuantity }: { section: Section; facilityId: string; encounters: EncounterOption[]; materials: MaterialOption[]; suppliers: SupplierOption[]; doctors: DoctorOption[]; services: ServiceOption[]; prefillMaterial?: string; prefillQuantity?: number }) {
   const [state, action, pending] = useActionState(saveOperation, initial);
   const command = section === "or" || section === "dr" ? "case.create" : section === "dietary" ? "diet.create" : section === "materials" ? "material.create" : section === "purchasing" ? "purchase.create" : "claim.create";
   return <section className="card operation-panel"><div className="card-header"><h3>{section === "or" || section === "dr" ? "Schedule case" : section === "dietary" ? "Order a patient meal" : section === "materials" ? "Add material" : section === "purchasing" ? "Request purchase" : "Prepare claim draft"}</h3></div>
@@ -61,17 +62,18 @@ function CreateForm({ section, facilityId, encounters, materials, suppliers, doc
         <label className="operation-wide">Instructions<textarea name="notes" rows={2}/></label>
       </>}
       {section === "materials" && <>
+        <p className="operation-wide notice">Inventory item type: Supply. Classify consumable stock below. Medicines use the Medicine stock tab; equipment and fixed assets need separate asset tracking.</p>
         <label>Material code<input required name="code" minLength={2}/></label>
         <label>Name<input required name="name" minLength={2}/></label>
-        <label>Category<input required name="category" placeholder="e.g. Medical supply, housekeeping"/></label>
+        <label>Supply category<input required name="category" list="material-categories" placeholder="e.g. Medical consumable"/><datalist id="material-categories"><option value="Medical consumable"/><option value="Dietary supply"/><option value="Housekeeping supply"/><option value="Office supply"/><option value="Other consumable"/></datalist></label>
         <label>Unit<input required name="unit" placeholder="piece, box, pack"/></label>
         <label>Reorder level<input required type="number" min="0" step="0.001" name="reorder_level" defaultValue="0"/></label>
         <label>Patient billing service (optional)<select name="service_id" defaultValue=""><option value="">No automatic patient charge</option>{services.map(s => <option key={s.id} value={s.id}>{s.code} · {s.name}</option>)}</select></label>
       </>}
       {section === "purchasing" && <>
         <label>Supplier<select required name="supplier_id" defaultValue=""><option value="">Choose supplier</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.code} · {s.name}</option>)}</select></label>
-        <label>Material<select required name="item_id" defaultValue=""><option value="">Choose material</option>{materials.map(m => <option key={m.id} value={m.id}>{m.code} · {m.name}</option>)}</select></label>
-        <label>Quantity<input required type="number" min="0.001" step="0.001" name="quantity"/></label>
+        <label>Material<select required name="item_id" defaultValue={prefillMaterial || ""}><option value="">Choose material</option>{materials.map(m => <option key={m.id} value={m.id}>{m.code} · {m.name}</option>)}</select></label>
+        <label>Quantity<input required type="number" min="0.001" step="0.001" name="quantity" defaultValue={prefillQuantity}/></label>
         <label>Unit cost<input required type="number" min="0" step="0.01" name="cost"/></label>
         <label className="operation-wide">Purchase reason<textarea required name="notes" minLength={5} rows={2}/></label>
         <small className="operation-wide">Add materials in Materials Inventory and suppliers in Inventory before creating an order. Approval requires another authorized user.</small>
@@ -100,24 +102,31 @@ function RowAction({ section, facilityId, row, status, label, command, quantity 
 
 function MaterialMovementForm({ facilityId, materials, encounters }: { facilityId: string; materials: MaterialOption[]; encounters: EncounterOption[] }) {
   const [state, action, pending] = useActionState(saveOperation, initial);
-  return <section className="card operation-panel"><div className="card-header"><h3>Receive or issue material</h3></div><form action={action} className="operation-form"><Fields facilityId={facilityId} section="materials" command="material.move"/>
-    <label>Material<select required name="item_id" defaultValue=""><option value="">Choose material</option>{materials.map(m => <option key={m.id} value={m.id}>{m.name} · {m.quantity_on_hand} {m.unit}</option>)}</select></label>
-    <label>Movement<select name="kind"><option value="receipt">Direct receipt</option><option value="issue">Issue to patient encounter</option></select></label>
-    <label>Quantity<input required type="number" min="0.001" step="0.001" name="quantity"/></label>
-    <label>Patient encounter (required for issue)<select name="encounter_id" defaultValue=""><option value="">None for direct receipt</option>{encounters.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}</select></label>
+  const [itemId, setItemId] = useState("");
+  const [kind, setKind] = useState("issue");
+  const [quantity, setQuantity] = useState("");
+  const selected = materials.find(m => m.id === itemId);
+  const requested = Number(quantity);
+  const shortage = kind === "issue" && selected && Number.isFinite(requested) && requested > Number(selected.quantity_on_hand) ? Math.round((requested - Number(selected.quantity_on_hand)) * 1000) / 1000 : 0;
+  return <section className="card operation-panel"><div className="card-header"><h3>Check stock and issue material</h3></div><form action={action} className="operation-form"><Fields facilityId={facilityId} section="materials" command="material.move"/>
+    <label>Material<select required name="item_id" value={itemId} onChange={event => setItemId(event.target.value)}><option value="">Choose material</option>{materials.map(m => <option key={m.id} value={m.id}>{m.name} · {m.quantity_on_hand} {m.unit}</option>)}</select></label>
+    <label>Movement<select name="kind" value={kind} onChange={event => setKind(event.target.value)}><option value="issue">Issue to patient encounter</option><option value="receipt">Direct receipt (outside PO)</option></select></label>
+    <label>Quantity<input required type="number" min="0.001" step="0.001" name="quantity" value={quantity} onChange={event => setQuantity(event.target.value)}/></label>
+    <label>Patient encounter (required for issue)<select name="encounter_id" required={kind === "issue"} defaultValue=""><option value="">None for direct receipt</option>{encounters.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}</select></label>
     <label>Reference<input name="reference" placeholder="Delivery or issue reference"/></label>
     <label>Notes<input name="notes"/></label>
-    <div className="operation-wide"><Feedback state={state}/><button className="btn btn-primary" disabled={pending}>{pending ? "Posting…" : "Post stock movement"}</button></div>
+    {kind === "issue" && selected && <p className="operation-wide notice">Available: {selected.quantity_on_hand} {selected.unit}. {shortage ? `Short by ${shortage} ${selected.unit}. Request the shortage through Purchasing, then issue after receiving the delivery.` : "Check the patient encounter, then issue from stock."}</p>}
+    <div className="operation-wide"><Feedback state={state}/>{shortage ? <Link className="btn btn-primary" href={`/operations/purchasing?material=${encodeURIComponent(itemId)}&quantity=${shortage}`}>Request {shortage} {selected?.unit} from Purchasing</Link> : <button className="btn btn-primary" disabled={pending}>{pending ? "Posting…" : kind === "issue" ? "Issue from stock" : "Post direct receipt"}</button>}</div>
   </form></section>;
 }
 
-export function OperationWorkspace({ section, facilityId, records, encounters, materials, suppliers, doctors, movements, services }: { section: Section; facilityId: string; records: OperationRow[]; encounters: EncounterOption[]; materials: MaterialOption[]; suppliers: SupplierOption[]; doctors: DoctorOption[]; movements: OperationRow[]; services: ServiceOption[] }) {
+export function OperationWorkspace({ section, facilityId, records, encounters, materials, suppliers, doctors, movements, services, prefillMaterial, prefillQuantity }: { section: Section; facilityId: string; records: OperationRow[]; encounters: EncounterOption[]; materials: MaterialOption[]; suppliers: SupplierOption[]; doctors: DoctorOption[]; movements: OperationRow[]; services: ServiceOption[]; prefillMaterial?: string; prefillQuantity?: number }) {
   const encounterName = (id?: string) => encounters.find(e => e.id === id)?.label || "Encounter";
   const itemName = (id?: string) => materials.find(m => m.id === id)?.name || "Material";
   return <div className="operation-workspace">
-    <nav aria-label="Hospital operations modules" className="operation-tabs">{modules.map(([key, title]) => <Link href={`/operations/${key}`} aria-current={key === section ? "page" : undefined} key={key}>{title}</Link>)}</nav>
-    <CreateForm section={section} facilityId={facilityId} encounters={encounters} materials={materials} suppliers={suppliers} doctors={doctors} services={services}/>
+    {section === "materials" || section === "purchasing" ? <InventoryModuleNav current={section === "materials" ? "/operations/materials" : "/operations/purchasing"}/> : <nav aria-label="Hospital operations modules" className="operation-tabs">{modules.filter(([key]) => key !== "materials" && key !== "purchasing").map(([key, title]) => <Link href={`/operations/${key}`} aria-current={key === section ? "page" : undefined} key={key}>{title}</Link>)}</nav>}
     {section === "materials" && <MaterialMovementForm facilityId={facilityId} materials={materials} encounters={encounters}/>}
+    <CreateForm section={section} facilityId={facilityId} encounters={encounters} materials={materials} suppliers={suppliers} doctors={doctors} services={services} prefillMaterial={prefillMaterial} prefillQuantity={prefillQuantity}/>
     <section className="card operation-panel"><div className="card-header"><h3>{section === "materials" ? "Material balances" : section === "purchasing" ? "Purchase orders" : section === "philhealth" ? "Claim worklist" : "Active and completed records"}</h3><span className="badge blue">{records.length} records</span></div>
       {section === "philhealth" && <div className="notice">eClaims transmission is not yet connected. Enter “Submitted externally” only after submitting through an authorized eClaims 3.0 provider and receiving its reference.</div>}
       <div className="operation-list">{records.length === 0 && <p className="empty-state">No records yet.</p>}{records.map(row => <article key={row.id} className="operation-record"><div><strong>{section === "materials" ? `${row.code} · ${row.name}` : section === "purchasing" ? `${itemName(row.item_id)} · ${row.quantity} units` : section === "philhealth" ? `${encounterName(row.encounter_id)} · ${row.diagnosis_code}` : section === "dietary" ? `${encounterName(row.encounter_id)} · ${row.diet_type}` : `${encounterName(row.encounter_id)} · ${row.procedure_name}`}</strong>
