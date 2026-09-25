@@ -13,7 +13,7 @@ const descriptions = {
 } as const;
 type Section = keyof typeof descriptions;
 
-export default async function OperationsPage({ params }: { params: Promise<{ section: string }> }) {
+export default async function OperationsPage({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ material?: string; quantity?: string }> }) {
   const { section } = await params;
   if (!(section in descriptions)) notFound();
   const kind = section as Section;
@@ -47,9 +47,13 @@ export default async function OperationsPage({ params }: { params: Promise<{ sec
     return doctor ? [{ id: row.doctor_id, name: `${doctor.last_name}, ${doctor.first_name}` }] : [];
   });
   const [title, description] = descriptions[kind];
+  const requested = await searchParams;
+  const prefillMaterial = kind === "purchasing" && (materialsResult.data || []).some(item => item.id === requested.material) ? requested.material : undefined;
+  const requestedQuantity = Number(requested.quantity);
+  const prefillQuantity = prefillMaterial && Number.isFinite(requestedQuantity) && requestedQuantity > 0 && requestedQuantity <= 1000000 ? requestedQuantity : undefined;
   return <>
     <PageHeading eyebrow="Hospital operations" title={title} description={description} />
     {errors.length ? <div className="form-error">Unable to load module data: {errors[0]?.message}. Apply the new Supabase migration before using this module.</div> : null}
-    {!errors.length ? <OperationWorkspace section={kind} facilityId={facilityId} records={(recordsResult.data || []) as OperationRow[]} encounters={encounters} materials={(materialsResult.data || []) as MaterialOption[]} suppliers={(suppliersResult.data || []) as SupplierOption[]} doctors={doctors} movements={(movementsResult.data || []) as OperationRow[]} services={(servicesResult.data || []) as ServiceOption[]} /> : null}
+    {!errors.length ? <OperationWorkspace section={kind} facilityId={facilityId} records={(recordsResult.data || []) as OperationRow[]} encounters={encounters} materials={(materialsResult.data || []) as MaterialOption[]} suppliers={(suppliersResult.data || []) as SupplierOption[]} doctors={doctors} movements={(movementsResult.data || []) as OperationRow[]} services={(servicesResult.data || []) as ServiceOption[]} prefillMaterial={prefillMaterial} prefillQuantity={prefillQuantity} /> : null}
   </>;
 }
