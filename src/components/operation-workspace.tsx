@@ -21,6 +21,7 @@ export type MaterialOption = { id: string; code: string; name: string; unit: str
 export type SupplierOption = { id: string; code: string; name: string };
 export type DoctorOption = { id: string; name: string };
 export type ServiceOption = { id: string; code: string; name: string };
+export type ProcedureRoomOption = { id: string; code: string; name: string; room_kind: string };
 
 const initial: OperationState = { ok: false, message: "" };
 const modules: [Section, string][] = [["or", "Operating Room"], ["dr", "Delivery Room"], ["dietary", "Dietary"], ["materials", "Materials"], ["purchasing", "Purchasing"], ["philhealth", "PhilHealth Claims"]];
@@ -38,7 +39,7 @@ function EncounterField({ encounters }: { encounters: EncounterOption[] }) {
   return <><SearchPicker kind="encounter" name="encounter_id" label="Patient encounter" title="Select patient encounter" placeholder="Select an active encounter" searchPlaceholder="Search patient, MRN, or encounter" required/><small>{encounters.filter(e => e.status !== "completed" && e.status !== "cancelled").length} recent active encounters available.</small></>;
 }
 
-function CreateForm({ section, facilityId, encounters, materials, suppliers, doctors, services, prefillMaterial, prefillQuantity }: { section: Section; facilityId: string; encounters: EncounterOption[]; materials: MaterialOption[]; suppliers: SupplierOption[]; doctors: DoctorOption[]; services: ServiceOption[]; prefillMaterial?: string; prefillQuantity?: number }) {
+function CreateForm({ section, facilityId, encounters, materials, suppliers, doctors, services, rooms, prefillMaterial, prefillQuantity }: { section: Section; facilityId: string; encounters: EncounterOption[]; materials: MaterialOption[]; suppliers: SupplierOption[]; doctors: DoctorOption[]; services: ServiceOption[]; rooms: ProcedureRoomOption[]; prefillMaterial?: string; prefillQuantity?: number }) {
   const [state, action, pending] = useActionState(saveOperation, initial);
   const command = section === "or" || section === "dr" ? "case.create" : section === "dietary" ? "diet.create" : section === "materials" ? "material.create" : section === "purchasing" ? "purchase.create" : "claim.create";
   return <section className="card operation-panel"><div className="card-header"><h3>{section === "or" || section === "dr" ? "Schedule case" : section === "dietary" ? "Order a patient meal" : section === "materials" ? "Add material" : section === "purchasing" ? "Request purchase" : "Prepare claim draft"}</h3></div>
@@ -46,7 +47,8 @@ function CreateForm({ section, facilityId, encounters, materials, suppliers, doc
       {(section === "or" || section === "dr") && <>
         <EncounterField encounters={encounters}/>
         <label>Procedure / delivery type<input required minLength={3} name="procedure_name" placeholder="Procedure or delivery description"/></label>
-        <label>Room<input required name="room_name" placeholder={section === "or" ? "OR 1" : "DR 1"}/></label>
+        <label>Room<select required name="room_name" defaultValue=""><option value="">Select {section.toUpperCase()} room</option>{rooms.map(room=><option key={room.id} value={room.code}>{room.code} · {room.name}</option>)}</select></label>
+        {rooms.length===0?<p className="operation-wide notice">No active {section.toUpperCase()} rooms are configured. <Link href="/administration/facilities">Manage OR/DR rooms</Link> before scheduling.</p>:null}
         <label>Schedule<input required name="scheduled_at" type="datetime-local"/></label>
         <label>Lead doctor<select name="doctor_id" defaultValue=""><option value="">Select doctor (optional)</option>{doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
         <label>Patient billing service (optional)<select name="service_id" defaultValue=""><option value="">No automatic charge</option>{services.map(s => <option key={s.id} value={s.id}>{s.code} · {s.name}</option>)}</select></label>
@@ -120,13 +122,13 @@ function MaterialMovementForm({ facilityId, materials, encounters }: { facilityI
   </form></section>;
 }
 
-export function OperationWorkspace({ section, facilityId, records, encounters, materials, suppliers, doctors, movements, services, prefillMaterial, prefillQuantity }: { section: Section; facilityId: string; records: OperationRow[]; encounters: EncounterOption[]; materials: MaterialOption[]; suppliers: SupplierOption[]; doctors: DoctorOption[]; movements: OperationRow[]; services: ServiceOption[]; prefillMaterial?: string; prefillQuantity?: number }) {
+export function OperationWorkspace({ section, facilityId, records, encounters, materials, suppliers, doctors, movements, services, rooms, prefillMaterial, prefillQuantity }: { section: Section; facilityId: string; records: OperationRow[]; encounters: EncounterOption[]; materials: MaterialOption[]; suppliers: SupplierOption[]; doctors: DoctorOption[]; movements: OperationRow[]; services: ServiceOption[]; rooms: ProcedureRoomOption[]; prefillMaterial?: string; prefillQuantity?: number }) {
   const encounterName = (id?: string) => encounters.find(e => e.id === id)?.label || "Encounter";
   const itemName = (id?: string) => materials.find(m => m.id === id)?.name || "Material";
   return <div className="operation-workspace">
     {section === "materials" || section === "purchasing" ? <InventoryModuleNav current={section === "materials" ? "/operations/materials" : "/operations/purchasing"}/> : <nav aria-label="Hospital operations modules" className="operation-tabs">{modules.filter(([key]) => key !== "materials" && key !== "purchasing").map(([key, title]) => <Link href={`/operations/${key}`} aria-current={key === section ? "page" : undefined} key={key}>{title}</Link>)}</nav>}
     {section === "materials" && <MaterialMovementForm facilityId={facilityId} materials={materials} encounters={encounters}/>}
-    <CreateForm section={section} facilityId={facilityId} encounters={encounters} materials={materials} suppliers={suppliers} doctors={doctors} services={services} prefillMaterial={prefillMaterial} prefillQuantity={prefillQuantity}/>
+    <CreateForm section={section} facilityId={facilityId} encounters={encounters} materials={materials} suppliers={suppliers} doctors={doctors} services={services} rooms={rooms} prefillMaterial={prefillMaterial} prefillQuantity={prefillQuantity}/>
     <section className="card operation-panel"><div className="card-header"><h3>{section === "materials" ? "Material balances" : section === "purchasing" ? "Purchase orders" : section === "philhealth" ? "Claim worklist" : "Active and completed records"}</h3><span className="badge blue">{records.length} records</span></div>
       {section === "philhealth" && <div className="notice">eClaims transmission is not yet connected. Enter “Submitted externally” only after submitting through an authorized eClaims 3.0 provider and receiving its reference.</div>}
       <div className="operation-list">{records.length === 0 && <p className="empty-state">No records yet.</p>}{records.map(row => <article key={row.id} className="operation-record"><div><strong>{section === "materials" ? `${row.code} · ${row.name}` : section === "purchasing" ? `${itemName(row.item_id)} · ${row.quantity} units` : section === "philhealth" ? `${encounterName(row.encounter_id)} · ${row.diagnosis_code}` : section === "dietary" ? `${encounterName(row.encounter_id)} · ${row.diet_type}` : `${encounterName(row.encounter_id)} · ${row.procedure_name}`}</strong>
