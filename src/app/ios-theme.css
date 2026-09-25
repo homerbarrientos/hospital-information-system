@@ -70,6 +70,7 @@ input,select,textarea,.filter{color:#e7edf2!important;background:#111f2a!importa
 .modal-backdrop{background:rgba(0,6,12,.72)}.modal{color:#dce5ec;background:linear-gradient(160deg,rgba(25,39,51,.99),rgba(13,25,35,.99));border-color:rgba(140,160,176,.18);box-shadow:0 32px 90px rgba(0,0,0,.52)}.modal-head{background:rgba(25,39,51,.82);border-bottom-color:#2e3d4a!important}.modal h3,.modal h4,.modal strong{color:#f2f5f8}
 .notice{color:#a8ddd6;background:rgba(20,65,63,.58);border-color:#275d59}.form-success{color:#7be0cf;background:#123b37!important;border-color:#28665f!important}.form-error{color:#ff9ca9;background:#442129!important;border-color:#71313c!important}
 .search-picker-grid,.search-picker-row,.picker-confirm-strip,.registry-record,.timeline-row{border-color:#2c3b48!important}.search-picker-row.selected{background:#153d3b!important}.empty-state,.empty-inline{color:#8393a5!important}
+.picker-confirm-strip{background:#13232f;color:var(--ink)}
 @media(max-width:760px){.sidebar{background:rgba(12,27,38,.96);border-bottom-color:#263744}.brand h1{color:#f3f7fa}.nav-item{color:#a9b7c5;background:#142532}.nav-item.active{color:#fff}.topbar{background:rgba(12,25,35,.9)}.content{background:transparent}}
 
 /* V3.1 — shared dark-theme control contrast and viewport-safe dialogs */
