@@ -123,7 +123,6 @@ input,select,textarea,.filter{color:#e7edf2!important;background:#111f2a!importa
 .master-tabs button,
 .registry-tabs button,
 .inventory-tabs button,
-.inventory-tabs a,
 .search-picker-filters button{
   color:#cbd6df;
   border-color:#344554;
@@ -133,7 +132,6 @@ input,select,textarea,.filter{color:#e7edf2!important;background:#111f2a!importa
 .master-tabs button:hover,
 .registry-tabs button:hover,
 .inventory-tabs button:hover,
-.inventory-tabs a:hover,
 .search-picker-filters button:hover{
   color:#f5f8fa;
   border-color:#4b6172;
@@ -142,7 +140,6 @@ input,select,textarea,.filter{color:#e7edf2!important;background:#111f2a!importa
 .master-tabs button.active,
 .registry-tabs button.active,
 .inventory-tabs button.active,
-.inventory-tabs a.active,
 .search-picker-filters button.active{
   color:#fff;
   border-color:#2bb5aa;

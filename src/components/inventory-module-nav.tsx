@@ -1,23 +1,18 @@
 import Link from "next/link";
+import { ArrowLeft, Package, PackagePlus } from "lucide-react";
 
 const sections = [
-  ["/inventory?tab=overview", "Stock Overview"],
-  ["/inventory?tab=beginning", "Beginning Balance"],
-  ["/inventory?tab=receiving", "Receiving"],
-  ["/inventory?tab=adjustments", "Adjustments"],
-  ["/inventory?tab=transfers", "Transfers"],
-  ["/inventory?tab=stock-card", "Stock Card"],
-  ["/inventory?tab=suppliers", "Suppliers"],
-  ["/operations/materials", "Materials Stock"],
-  ["/operations/purchasing", "Purchasing"],
+  ["/operations/materials", "Materials stock", Package],
+  ["/operations/purchasing", "Purchasing", PackagePlus],
 ] as const;
 
-export function InventoryModuleNav({ current }: { current: "/operations/materials" | "/operations/purchasing" }) {
-  return <nav aria-label="Inventory sections" className="inventory-tabs">
-    {sections.map(([href, label]) => <Link key={href} href={href} aria-current={current === href ? "page" : undefined} className={current === href ? "active" : ""}>{label}</Link>)}
+export function InventoryModuleNav({ current }: { current: (typeof sections)[number][0] }) {
+  return <nav aria-label="Inventory actions" className="inventory-actions">
+    <Link href="/inventory" className="btn btn-secondary"><ArrowLeft size={15}/>Inventory overview</Link>
+    {sections.map(([href, label, Icon]) => <Link key={href} href={href} aria-current={current === href ? "page" : undefined} className={`btn ${current === href ? "btn-primary" : "btn-secondary"}`}><Icon size={15}/>{label}</Link>)}
   </nav>;
 }
 
 export function InventoryExtensionLinks() {
-  return <>{sections.slice(-2).map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}</>;
+  return <>{sections.map(([href, label, Icon]) => <Link key={href} href={href} className="btn btn-secondary"><Icon size={15}/>{label}</Link>)}</>;
 }
