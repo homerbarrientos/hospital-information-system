@@ -4,7 +4,6 @@
 .operation-tabs a:hover{border-color:var(--teal);background:var(--teal-soft)}
 .operation-tabs a[aria-current="page"]{background:var(--teal);border-color:var(--teal);color:#062c2b}
 .operation-tabs a[aria-current="page"]:hover{background:var(--teal)}
-.inventory-module-nav{margin-bottom:18px}
 .operation-panel{min-width:0;overflow:hidden}
 .operation-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px}
 .operation-form label,.operation-inline label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--navy);min-width:0}
