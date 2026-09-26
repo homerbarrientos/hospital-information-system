@@ -1,12 +1,20 @@
 "use client";
 import Link from"next/link";import{createContext,useContext,useEffect,useState}from"react";import{usePathname}from"next/navigation";import{Activity,Baby,BedDouble,Bell,Boxes,CalendarDays,CircleDollarSign,ClipboardList,ClipboardPlus,FileChartColumn,FileHeart,Gauge,HeartPulse,LogOut,Menu,Package,PackagePlus,Pill,Settings,ShieldCheck,Stethoscope,UsersRound,Utensils,X}from"lucide-react";import{signOut}from"@/app/login/actions";
-const main=[["/","Dashboard",Gauge],["/patients","Patients",UsersRound],["/queue","Appointments & Queue",CalendarDays],["/clinical","Consultation",ClipboardPlus],["/clinical-registry","Clinical Registry",Stethoscope],["/admissions","Admission & Transfer",BedDouble],["/orders","Orders & Results",ClipboardList],["/pharmacy","Pharmacy",Pill],["/inventory","Inventory",Boxes],["/operations/materials","Materials Stock",Package],["/operations/purchasing","Purchasing",PackagePlus],["/billing","Billing & Cashier",CircleDollarSign],["/reports","Reports",FileChartColumn]]as const;const admin=[["/administration","Administration",Settings],["/audit","Audit & Compliance",ShieldCheck]]as const;
-const operations=[["/operations/or","Operating Room",Activity],["/operations/dr","Delivery Room",Baby],["/operations/dietary","Dietary",Utensils],["/operations/philhealth","PhilHealth Claims",FileHeart]]as const;
+const navigationGroups=[
+  {label:"Patient Care",items:[["/","Dashboard",Gauge],["/patients","Patients",UsersRound],["/queue","Appointments & Queue",CalendarDays],["/clinical","Consultation",ClipboardPlus],["/clinical-registry","Clinical Registry",Stethoscope],["/admissions","Admission & Transfer",BedDouble],["/orders","Orders & Results",ClipboardList]]},
+  {label:"Clinical Services",items:[["/pharmacy","Pharmacy",Pill],["/operations/or","Operating Room",Activity],["/operations/dr","Delivery Room",Baby],["/operations/dietary","Dietary",Utensils]]},
+  {label:"Materials & Supply Chain",items:[["/inventory","Inventory Management",Boxes],["/operations/materials","Materials Management",Package],["/operations/purchasing","Purchasing & Procurement",PackagePlus]]},
+  {label:"Revenue & Claims",items:[["/billing","Billing & Cashiering",CircleDollarSign],["/operations/philhealth","PhilHealth Claims",FileHeart]]},
+  {label:"Reports & Analytics",items:[["/reports","Reports",FileChartColumn],["/reports?view=executive","Executive Dashboard",Gauge],["/reports?view=operations","Operational Analytics",Activity],["/reports?view=disease","Clinical Analytics",Stethoscope],["/reports?view=revenue","Financial Analytics",CircleDollarSign]]},
+  {label:"Platform Administration",items:[["/administration","Administration",Settings],["/administration/reference-data","Libraries",ClipboardList],["/administration/roles","Security",ShieldCheck],["/audit","Audit & Compliance",ShieldCheck]]},
+] as const;
 const ShellContext=createContext(false);
 export function AppShell({children}:{children:React.ReactNode}){
   const nested=useContext(ShellContext);
   const path=usePathname();
   const [navigationOpen,setNavigationOpen]=useState(false);
+  const [reportView,setReportView]=useState("");
+  useEffect(()=>{const syncView=()=>setReportView(new URLSearchParams(window.location.search).get("view")||"");syncView();window.addEventListener("popstate",syncView);return()=>window.removeEventListener("popstate",syncView)},[path]);
   useEffect(()=>{
     if(!navigationOpen)return;
     const onKeyDown=(event:KeyboardEvent)=>{if(event.key==="Escape")setNavigationOpen(false)};
@@ -19,9 +27,7 @@ export function AppShell({children}:{children:React.ReactNode}){
     {navigationOpen&&<button type="button" className="mobile-nav-backdrop" aria-label="Close navigation" onClick={closeNavigation}/>}
     <aside id="hospital-navigation" className={`sidebar ${navigationOpen?"mobile-nav-open":""}`}>
       <div className="sidebar-header"><Link href="/" className="brand" aria-label="Hospital ONE — go to dashboard" onClick={closeNavigation}><div className="brand-mark"><HeartPulse size={23}/></div><div><h1>Hospital ONE</h1><p>Infirmary Core MVP</p></div></Link><button type="button" className="icon-btn mobile-nav-close" aria-label="Close navigation" onClick={closeNavigation}><X size={19}/></button></div>
-      <p className="nav-label">Patient operations</p><nav className="nav-list" aria-label="Patient operations">{main.map(([h,l,I])=><Link key={h} href={h} onClick={closeNavigation} aria-current={path===h?"page":undefined} className={`nav-item ${path===h?"active":""}`}><I size={16}/>{l}</Link>)}</nav>
-      <p className="nav-label">Expanded operations</p><nav className="nav-list" aria-label="Expanded operations">{operations.map(([h,l,I])=><Link key={h} href={h} onClick={closeNavigation} aria-current={path===h?"page":undefined} className={`nav-item ${path===h?"active":""}`}><I size={16}/>{l}</Link>)}</nav>
-      <p className="nav-label">Governance</p><nav className="nav-list" aria-label="Governance">{admin.map(([h,l,I])=><Link key={h} href={h} onClick={closeNavigation} aria-current={path===h?"page":undefined} className={`nav-item ${path===h?"active":""}`}><I size={16}/>{l}</Link>)}</nav>
+      <div className="sidebar-navigation">{navigationGroups.map(group=><div className="nav-group" key={group.label}><p className="nav-label">{group.label}</p><nav className="nav-list" aria-label={group.label}>{group.items.map(([href,label,Icon])=>{const view=href.includes("?")?href.split("view=")[1]:"";const active=path===href.split("?")[0]&&(path!=="/reports"||reportView===view);return <Link key={href} href={href} onClick={()=>{setReportView(view);closeNavigation()}} aria-current={active?"page":undefined} className={`nav-item ${active?"active":""}`}><Icon size={16}/>{label}</Link>})}</nav></div>)}</div>
       <div className="profile-card"><div className="avatar">HA</div><div><strong>Signed-in user</strong><span>Facility team member</span></div></div>
     </aside><main className="app-main"><header className="topbar"><div className="facility"><strong>Infirmary Pilot Facility</strong><span>Patient care operations · Philippine Time</span></div><div className="top-actions"><button type="button" className="icon-btn mobile-nav-toggle" aria-label="Open navigation" aria-expanded={navigationOpen} aria-controls="hospital-navigation" onClick={()=>setNavigationOpen(true)}><Menu size={19}/></button><button type="button" className="icon-btn" aria-label="Notifications"><Bell size={17}/></button><form action={signOut}><button className="icon-btn" aria-label="Log out"><LogOut size={17}/></button></form></div></header><div className="content">{children}</div></main>
   </div></ShellContext.Provider>
